@@ -12,6 +12,9 @@ data:
 
 	unzip 55175_105481_bundle_archive.zip -d data/
 
+	@# Remove the duplicate file
+	rm -rf data/yoochoose-data
+
 	mv 55175_105481_bundle_archive.zip data/ 
 
 
