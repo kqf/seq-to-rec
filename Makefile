@@ -2,8 +2,8 @@
 train: data/processed
 	echo "To be implemented"
 
-data/processed: data
-	mkdir -p $@
+data/processed: data/
+	python model/data.py --raw $^ --out $@
 
 data:
 	@# Data can be downloaded from kaggle: 
