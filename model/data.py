@@ -30,6 +30,11 @@ def remove_short(data, col="session_id", min_size=1):
     return data[np.in1d(data[col], lengths[lengths > min_size].index)]
 
 
+def build_sessions(df, session_col="session_id", item_col="item_id"):
+    df[item_col] = df[item_col].astype(str)
+    return df.groupby(session_col)[item_col].transform(lambda x: " ".join(x))
+
+
 @click.command()
 @click.option("--raw", type=click.Path(exists=False))
 @click.option("--out", type=click.Path(exists=False))
@@ -48,9 +53,16 @@ def main(raw, out, train, test):
     valid = train[train["time"] >= split_day]
     train = train[train["time"] < split_day]
 
-    print(train)
-    print("-----")
-    print(valid)
+    train_sessions = build_sessions(train)
+    valid_sessions = build_sessions(valid)
+    test_sessions = build_sessions(test)
+
+    opath = pathlib.Path(out)
+    opath.mkdir(parents=True, exist_ok=False)
+
+    train_sessions.to_csv(opath / "train.txt", index=False, header=None)
+    valid_sessions.to_csv(opath / "valid.txt", index=False, header=None)
+    test_sessions.to_csv(opath / "test.txt", index=False, header=None)
 
 
 if __name__ == '__main__':
