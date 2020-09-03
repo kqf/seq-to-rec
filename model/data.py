@@ -16,7 +16,14 @@ def read_file(path, filename):
     )
     df["time"] = pd.to_datetime(df["time"])
     df["time"] = df["time"].apply(lambda x: x.timestamp())
-    return df
+
+    cleaned = remove_short_sessions(df, min_size=1)
+    return cleaned
+
+
+def remove_short_sessions(data, col="session_id", min_size=1):
+    lengths = data.groupby(col).size()
+    return data[np.in1d(data[col], lengths[lengths > min_size].index)]
 
 
 @click.command()
