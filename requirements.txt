@@ -3,3 +3,4 @@ pandas
 kaggle
 numpy
 ipdb
+pytest
