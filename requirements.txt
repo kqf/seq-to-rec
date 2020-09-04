@@ -4,3 +4,6 @@ kaggle
 numpy
 ipdb
 pytest
+scikit-learn
+torchtext
+torch
