@@ -1,3 +1,13 @@
+import pytest
+import pandas as pd
 
-def test_data():
-    pass
+
+@pytest.fixture
+def data(size=10):
+    return pd.DataFrame({
+        "text": [[1, 2, 3, 4, 5], ] * size
+    })
+
+
+def test_data(data):
+    print(data)
