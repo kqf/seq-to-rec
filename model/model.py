@@ -27,6 +27,20 @@ def shift(seq, by):
     return torch.cat([seq[by:], seq.new_ones((by, seq.shape[1]))])
 
 
+class DynamicVariablesSetter(skorch.callbacks.Callback):
+    def on_train_begin(self, net, X, y):
+        vocab = X.fields["text"].vocab
+        net.set_params(module__vocab_size=len(vocab))
+        net.set_params(criterion__ignore_index=vocab["<pad>"])
+
+        n_pars = self.count_parameters(net.module_)
+        print(f'The model has {n_pars:,} trainable parameters')
+
+    @staticmethod
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
 class CollaborativeModel(torch.nn.Module):
     def __init__(self, vocab_size, emb_dim=100, hidden_dim=128):
         super().__init__()
