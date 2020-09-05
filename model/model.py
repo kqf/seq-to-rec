@@ -1,3 +1,6 @@
+import torch
+import skorch
+
 from sklearn.base import BaseEstimator, TransformerMixin
 from torchtext.data import Example, Dataset, Field
 
@@ -18,6 +21,17 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
         proc = [X[col].apply(f.preprocess) for col, f in self.fields]
         examples = [Example.fromlist(f, self.fields) for f in zip(*proc)]
         return Dataset(examples, self.fields)
+
+
+def shift(seq, by):
+    return torch.cat([seq[by:], seq.new_ones((by, seq.shape[1]))])
+
+
+class SeqNet(skorch.NeuralNet):
+    def get_loss(self, y_pred, y_true, X=None, training=False):
+        out, _ = y_pred
+        logits = out.view(-1, out.shape[-1])
+        return self.criterion_(logits, shift(y_true, by=1).view(-1))
 
 
 def tokenize(x):
