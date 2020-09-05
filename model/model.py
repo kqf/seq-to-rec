@@ -1,8 +1,9 @@
 import torch
 import skorch
 
+from sklearn.pipeline import make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
-from torchtext.data import Example, Dataset, Field
+from torchtext.data import Example, Dataset, Field, BucketIterator
 
 
 class TextPreprocessor(BaseEstimator, TransformerMixin):
@@ -75,6 +76,40 @@ def build_preprocessor():
         ('text', text_field),
     ]
     return TextPreprocessor(fields, min_freq=3)
+
+
+class SequenceIterator(BucketIterator):
+    def __iter__(self):
+        for batch in super().__iter__():
+            yield batch.text, batch.text
+
+
+def build_model():
+    model = SeqNet(
+        module=CollaborativeModel,
+        module__vocab_size=100,  # Dummy dimension
+        optimizer=torch.optim.Adam,
+        criterion=torch.nn.CrossEntropyLoss,
+        max_epochs=2,
+        batch_size=32,
+        iterator_train=SequenceIterator,
+        iterator_train__shuffle=True,
+        iterator_train__sort=False,
+        iterator_valid=SequenceIterator,
+        iterator_valid__shuffle=False,
+        iterator_valid__sort=False,
+        train_split=lambda x, y, **kwargs: Dataset.split(x, **kwargs),
+        callbacks=[
+            skorch.callbacks.GradientNormClipping(1.),
+            DynamicVariablesSetter(),
+        ],
+    )
+
+    full = make_pipeline(
+        build_preprocessor(),
+        model,
+    )
+    return full
 
 
 def main():
