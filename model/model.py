@@ -98,7 +98,7 @@ def build_model():
         iterator_valid=SequenceIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
-        train_split=lambda x, y, **kwargs: Dataset.split(x, **kwargs),
+        train_split=Dataset.split,
         callbacks=[
             skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
