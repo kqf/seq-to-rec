@@ -27,10 +27,22 @@ def shift(seq, by):
     return torch.cat([seq[by:], seq.new_ones((by, seq.shape[1]))])
 
 
+class CollaborativeModel(torch.nn.Module):
+    def __init__(self, vocab_size, emb_dim=100, hidden_dim=128):
+        super().__init__()
+        self._emb = torch.nn.Embedding(vocab_size, emb_dim)
+        self._rnn = torch.nn.LSTM(input_size=emb_dim, hidden_size=hidden_dim)
+        self._out = torch.nn.Linear(hidden_dim, vocab_size)
+
+    def forward(self, inputs, hidden=None):
+        embedded = self._emb(inputs)
+        lstm_out, hidden = self._rnn(embedded, hidden)
+        return self._out(lstm_out)
+
+
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
-        out, _ = y_pred
-        logits = out.view(-1, out.shape[-1])
+        logits = y_pred.view(-1, y_pred.shape[-1])
         return self.criterion_(logits, shift(y_true, by=1).view(-1))
 
 
