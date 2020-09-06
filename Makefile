@@ -1,6 +1,6 @@
 
 train: data/processed
-	echo "To be implemented"
+	python model/model.py --path $^
 
 data/processed: data/
 	python model/data.py --raw $^ --out $@

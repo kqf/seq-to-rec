@@ -1,10 +1,23 @@
+import click
 import torch
 import skorch
+import pathlib
 
 import numpy as np
+import pandas as pd
+
 from sklearn.pipeline import make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 from torchtext.data import Example, Dataset, Field, BucketIterator
+
+
+def read_data(raw):
+    path = pathlib.Path(raw)
+    return (
+        pd.read_csv(path / 'train.txt', names=["text"]),
+        pd.read_csv(path / 'valid.txt', names=["text"]),
+        pd.read_csv(path / 'test.txt', names=["text"]),
+    )
 
 
 class TextPreprocessor(BaseEstimator, TransformerMixin):
@@ -122,8 +135,13 @@ def build_model():
     return full
 
 
-def main():
-    pass
+@click.command()
+@click.option(
+    "--path", type=click.Path(exists=True), default="data/processed/")
+def main(path):
+    train, valid, test = read_data(path)
+    model = build_model().fit(train)
+    print(model.predict(valid))
 
 
 if __name__ == '__main__':
