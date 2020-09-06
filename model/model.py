@@ -38,10 +38,6 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
         return Dataset(examples, self.fields)
 
 
-def shift(seq, by):
-    return torch.cat([seq[by:], seq.new_ones((by, seq.shape[1]))])
-
-
 class DynamicVariablesSetter(skorch.callbacks.Callback):
     def on_train_begin(self, net, X, y):
         vocab = X.fields["text"].vocab
@@ -69,10 +65,19 @@ class CollaborativeModel(torch.nn.Module):
         return self._out(lstm_out)
 
 
+def shift(seq, by):
+    """
+        Shift the sequence by one
+        seq -- tensor[seq_len, batch_size],
+        by -- int,
+    """
+    return torch.cat([seq[by:], seq.new_ones((by, seq.shape[1]))])
+
+
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred.view(-1, y_pred.shape[-1])
-        return self.criterion_(logits, shift(y_true, by=1).view(-1))
+        return self.criterion_(logits, shift(y_true.T, by=1).view(-1))
 
 
 def tokenize(x):
