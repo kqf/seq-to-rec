@@ -125,6 +125,7 @@ def build_model():
             DynamicVariablesSetter(),
             skorch.callbacks.EpochScoring(ppx("train_loss"), on_train=True),
             skorch.callbacks.EpochScoring(ppx("valid_loss"), on_train=False),
+            skorch.callbacks.ProgressBar('count'),
         ],
     )
 
