@@ -30,9 +30,16 @@ def remove_short(data, col="session_id", min_size=1):
     return data[np.in1d(data[col], lengths[lengths > min_size].index)]
 
 
-def build_sessions(df, session_col="session_id", item_col="item_id"):
+def build_sessions(
+    df,
+    session_col="session_id",
+    item_col="item_id",
+    min_len=1,
+):
     df[item_col] = df[item_col].astype(str)
-    return df.groupby(session_col)[item_col].transform(lambda x: " ".join(x))
+    sess = df.groupby(session_col)[item_col].transform(lambda x: " ".join(x))
+    sess = sess[sess.str.split().str.len() > min_len]
+    return sess
 
 
 @click.command()
