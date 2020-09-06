@@ -1,6 +1,7 @@
 import torch
 import skorch
 
+import numpy as np
 from sklearn.pipeline import make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 from torchtext.data import Example, Dataset, Field, BucketIterator
@@ -84,13 +85,20 @@ class SequenceIterator(BucketIterator):
             yield batch.text, batch.text
 
 
+def ppx(loss_type):
+    def _ppx(model, X, y):
+        return np.exp(model.history[-1][loss_type])
+    _ppx.__name__ = f"ppx_{loss_type}"
+    return _ppx
+
+
 def build_model():
     model = SeqNet(
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=torch.nn.CrossEntropyLoss,
-        max_epochs=2,
+        max_epochs=4,
         batch_size=32,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
@@ -102,6 +110,8 @@ def build_model():
         callbacks=[
             skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
+            skorch.callbacks.EpochScoring(ppx("train_loss"), on_train=True),
+            skorch.callbacks.EpochScoring(ppx("valid_loss"), on_train=False),
         ],
     )
 
