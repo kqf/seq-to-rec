@@ -79,6 +79,18 @@ class SeqNet(skorch.NeuralNet):
         logits = y_pred.view(-1, y_pred.shape[-1])
         return self.criterion_(logits, shift(y_true.T, by=1).view(-1))
 
+    def pred_iterator(self, X, at=20):
+        self.module_.eval()
+        for (x, y) in self.get_iterator(self.get_dataset(X), training=False):
+            with torch.no_grad():
+                preds = self.module_(x)
+
+                # Don't generate candidate for the last item in the sequence
+                candidates = (-preds).argsort(-1)[:, :-1, :at]
+
+            true_labels = y[:, 1:].detach().cpu().numpy()
+            yield candidates, true_labels.detach().cpu().numpy()
+
 
 def tokenize(x):
     return x.split()
@@ -110,6 +122,12 @@ def ppx(loss_type):
     return _ppx
 
 
+def rec(name, at=20):
+    def recall(model, X, y):
+        model.pred_iterator(X, at=at)
+    return recall
+
+
 def build_model():
     model = SeqNet(
         module=CollaborativeModel,
@@ -130,6 +148,7 @@ def build_model():
             DynamicVariablesSetter(),
             skorch.callbacks.EpochScoring(ppx("train_loss"), on_train=True),
             skorch.callbacks.EpochScoring(ppx("valid_loss"), on_train=False),
+            skorch.callbacks.EpochScoring(rec("valid"), on_train=False),
             skorch.callbacks.ProgressBar('count'),
         ],
     )
