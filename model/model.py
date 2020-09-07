@@ -79,7 +79,7 @@ class SeqNet(skorch.NeuralNet):
         logits = y_pred.view(-1, y_pred.shape[-1])
         return self.criterion_(logits, shift(y_true.T, by=1).view(-1))
 
-    def preds_with_labels(self, X, at=20):
+    def transform(self, X, at=20):
         self.module_.eval()
         xpreds, labels = [], []
         for (x, y) in self.get_iterator(self.get_dataset(X), training=False):
@@ -95,7 +95,7 @@ class SeqNet(skorch.NeuralNet):
 
             true_labels = y[:, 1:].reshape(-1).detach().cpu().numpy()
             xpreds.append(candidates), labels.append(true_labels)
-        return np.hstack(xpreds), np.hstack(labels)
+        return np.vstack(xpreds), np.hstack(labels)
 
 
 def tokenize(x):
@@ -130,7 +130,7 @@ def ppx(loss_type):
 
 def rec(name, at=20):
     def recall(model, X, y):
-        preds, gold = model.preds_with_labels(X, at=at)
+        preds, gold = model.transform(X, at=at)
         return 0
     recall.__name__ += f"@{at}"
     return recall
