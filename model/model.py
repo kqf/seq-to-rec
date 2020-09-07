@@ -93,9 +93,9 @@ class SeqNet(skorch.NeuralNet):
                 candidates = candidates.reshape(-1, candidates.shape[-1])
                 candidates = candidates.detach().cpu().numpy()
 
-            true_labels = y[:, 1:].reshape(-1).detach().cpu().numpy()
+            true_labels = y[:, 1:].reshape(-1, 1).detach().cpu().numpy()
             xpreds.append(candidates), labels.append(true_labels)
-        return np.vstack(xpreds), np.hstack(labels)
+        return np.vstack(xpreds), np.vstack(labels)
 
 
 def tokenize(x):
@@ -131,11 +131,10 @@ def ppx(loss_type):
 def recall(y_true, y_pred=None, ignore=None, k=25):
     mask = ~(y_pred == ignore)
     relevant = np.in1d(y_pred[:k], y_true)
-    import ipdb; ipdb.set_trace(); import IPython; IPython.embed() # noqa
     return np.sum(relevant * mask) / y_true[:k].shape[0]
 
 
-def rec(name, at=20):
+def rec(name, at=5):
     def func(model, X, y):
         preds, gold = model.transform(X, at=at)
         return np.mean([recall(g, p) for g, p in zip(gold, preds)])
