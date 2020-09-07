@@ -128,12 +128,19 @@ def ppx(loss_type):
     return _ppx
 
 
+def recall(y_true, y_pred=None, ignore=None, k=25):
+    mask = ~(y_pred == ignore)
+    relevant = np.in1d(y_pred[:k], y_true)
+    import ipdb; ipdb.set_trace(); import IPython; IPython.embed() # noqa
+    return np.sum(relevant * mask) / y_true[:k].shape[0]
+
+
 def rec(name, at=20):
-    def recall(model, X, y):
+    def func(model, X, y):
         preds, gold = model.transform(X, at=at)
-        return 0
-    recall.__name__ += f"@{at}"
-    return recall
+        return np.mean([recall(g, p) for g, p in zip(gold, preds)])
+    func.__name__ = f"recall@{at}"
+    return func
 
 
 def build_model():
