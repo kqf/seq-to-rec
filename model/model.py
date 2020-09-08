@@ -109,6 +109,10 @@ class SeqNet(skorch.NeuralNet):
         y_proba = np.concatenate(y_probas, 0)
         return y_proba
 
+    def predict(self, X):
+        probas = self.predict_proba(X)
+        return (-probas).argsort()
+
 
 def tokenize(x):
     return x.split()
