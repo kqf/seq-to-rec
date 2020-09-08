@@ -157,6 +157,7 @@ def build_model():
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=Dataset.split,
+        device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         callbacks=[
             skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
