@@ -98,6 +98,17 @@ class SeqNet(skorch.NeuralNet):
             xpreds.append(candidates), labels.append(true_labels)
         return np.vstack(xpreds), np.vstack(labels)
 
+    def predict_proba(self, X):
+        nonlin = self._get_predict_nonlinearity()
+        y_probas = []
+        for yp in self.forward_iter(X, training=False):
+            yp = yp[0] if isinstance(yp, tuple) else yp
+            yp = nonlin(yp)
+            # Take the last element of the sequence
+            y_probas.append(skorch.utils.to_numpy(yp[:, -1, :]))
+        y_proba = np.concatenate(y_probas, 0)
+        return y_proba
+
 
 def tokenize(x):
     return x.split()
@@ -164,7 +175,7 @@ def build_model():
             DynamicVariablesSetter(),
             skorch.callbacks.EpochScoring(ppx("train_loss"), on_train=True),
             skorch.callbacks.EpochScoring(ppx("valid_loss"), on_train=False),
-            skorch.callbacks.EpochScoring(rec("valid"), on_train=False),
+            # skorch.callbacks.EpochScoring(rec("valid"), on_train=False),
             skorch.callbacks.ProgressBar('count'),
         ],
     )
@@ -182,7 +193,12 @@ def build_model():
 def main(path):
     train, valid, test = read_data(path)
     model = build_model().fit(train)
-    print(model.predict(valid))
+
+    splitted = train["text"].str.split()
+    train["text"] = splitted.str[:-1]
+    train["gold"] = splitted.str[-1]
+
+    print(model.predict(train))
 
 
 if __name__ == '__main__':
