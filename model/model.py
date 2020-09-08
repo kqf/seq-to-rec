@@ -111,7 +111,8 @@ class SeqNet(skorch.NeuralNet):
 
     def predict(self, X):
         probas = self.predict_proba(X)
-        return (-probas).argsort()
+        indexes = (-probas).argsort()
+        return np.take(X.fields["text"].vocab.itos, indexes)
 
 
 def tokenize(x):
