@@ -77,14 +77,15 @@ def shift(seq, by):
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred.view(-1, y_pred.shape[-1])
-        return self.criterion_(logits, shift(y_true.T, by=1).view(-1))
+        targets = shift(y_true.T, by=1).to(self.device)
+        return self.criterion_(logits, targets.view(-1))
 
     def transform(self, X, at=20):
         self.module_.eval()
         xpreds, labels = [], []
         for (x, y) in self.get_iterator(self.get_dataset(X), training=False):
             with torch.no_grad():
-                preds = self.module_(x)
+                preds = self.module_(x.to(self.device))
 
                 # Don't generate candidate for the last item in the sequence
                 candidates = (-preds).argsort(-1)[:, :-1, :at]
