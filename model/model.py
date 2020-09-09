@@ -200,6 +200,7 @@ def build_model():
 def main(path):
     train, valid, test = read_data(path)
     model = build_model().fit(train)
+    train = train[train.str.split().str.len() < 125]
 
     splitted = train["text"].str.split()
     train["text"] = splitted.str[:-1]
