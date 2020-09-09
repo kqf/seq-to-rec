@@ -146,6 +146,7 @@ def ppx(loss_type):
 
 
 def recall(y_true, y_pred=None, ignore=None, k=25):
+    y_pred = y_pred[:25]
     mask = ~(y_pred == ignore)
     relevant = np.in1d(y_pred[:k], y_true)
     return np.sum(relevant * mask) / y_true[:k].shape[0]
@@ -201,9 +202,11 @@ def main(path):
 
     splitted = train["text"].str.split()
     train["text"] = splitted.str[:-1]
-    train["gold"] = splitted.str[-1]
+    gold = splitted.str[-1].values.reshape(-1, 1)
 
-    print(model.predict(train))
+    preds = model.predict(train)
+    recalls = [recall(g, p) for g, p in zip(gold, preds)]
+    print(np.mean(recalls))
 
 
 if __name__ == '__main__':
