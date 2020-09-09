@@ -77,13 +77,13 @@ def shift(seq, by):
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred.view(-1, y_pred.shape[-1])
-        targets = shift(y_true.T, by=1).to(self.device)
+        targets = shift(X.T, by=1)
         return self.criterion_(logits, targets.view(-1))
 
     def transform(self, X, at=20):
         self.module_.eval()
         xpreds, labels = [], []
-        for (x, y) in self.get_iterator(self.get_dataset(X), training=False):
+        for (x, _) in self.get_iterator(self.get_dataset(X), training=False):
             with torch.no_grad():
                 preds = self.module_(x.to(self.device))
 
@@ -94,7 +94,7 @@ class SeqNet(skorch.NeuralNet):
                 candidates = candidates.reshape(-1, candidates.shape[-1])
                 candidates = candidates.detach().cpu().numpy()
 
-            true_labels = y[:, 1:].reshape(-1, 1).detach().cpu().numpy()
+            true_labels = x[:, 1:].reshape(-1, 1).detach().cpu().numpy()
             xpreds.append(candidates), labels.append(true_labels)
         return np.vstack(xpreds), np.vstack(labels)
 
@@ -135,7 +135,7 @@ def build_preprocessor():
 class SequenceIterator(BucketIterator):
     def __iter__(self):
         for batch in super().__iter__():
-            yield batch.text, batch.text
+            yield batch.text, None
 
 
 def ppx(loss_type):
