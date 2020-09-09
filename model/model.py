@@ -140,7 +140,7 @@ class SequenceIterator(BucketIterator):
 
 def ppx(loss_type):
     def _ppx(model, X, y):
-        return np.exp(model.history[-1][loss_type])
+        return np.exp(model.history[-1][loss_type].item())
     _ppx.__name__ = f"ppx_{loss_type}"
     return _ppx
 
