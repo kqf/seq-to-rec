@@ -137,18 +137,15 @@ def ppx(loss_type):
 
 
 def recall(y_true, y_pred=None, ignore=None, k=25):
-    y_pred = y_pred[:25]
+    y_pred = y_pred[:k]
     mask = ~(y_pred == ignore)
     relevant = np.in1d(y_pred[:k], y_true)
     return np.sum(relevant * mask) / y_true[:k].shape[0]
 
 
-def rec(name, at=5):
-    def func(model, X, y):
-        preds, gold = model.transform(X, at=at)
-        return np.mean([recall(g, p) for g, p in zip(gold, preds)])
-    func.__name__ = f"recall@{at}"
-    return func
+def scoring(model, X, y, at=25):
+    preds, gold = model.transform(X, at=at)
+    return np.mean([recall(g, p) for g, p in zip(gold, preds)])
 
 
 def build_model():
@@ -173,7 +170,8 @@ def build_model():
             DynamicVariablesSetter(),
             skorch.callbacks.EpochScoring(ppx("train_loss"), on_train=True),
             skorch.callbacks.EpochScoring(ppx("valid_loss"), on_train=False),
-            # skorch.callbacks.EpochScoring(rec("valid"), on_train=False),
+            skorch.callbacks.EpochScoring(
+                scoring, name="recall@25", on_train=False),
             skorch.callbacks.ProgressBar('count'),
         ],
     )
