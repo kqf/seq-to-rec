@@ -17,6 +17,10 @@ def read_file(path, filename):
     )
     df["time"] = pd.to_datetime(df["time"])
 
+    # Ensure the data is in the right order
+    df = df.sort_values(["session_id", "time"])
+    df.reset_index(inplace=True)
+
     # Remove short sessions
     cleaned = remove_short(df, min_size=1)
 
