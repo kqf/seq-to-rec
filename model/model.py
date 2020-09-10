@@ -129,11 +129,8 @@ class SequenceIterator(BucketIterator):
             yield batch.text, None
 
 
-def ppx(loss_type):
-    def _ppx(model, X, y):
-        return np.exp(model.history[-1][loss_type].item())
-    _ppx.__name__ = f"ppx_{loss_type}"
-    return _ppx
+def ppx(model, X, y):
+    return np.exp(model.history[-1]["valid_loss"].item())
 
 
 def recall(y_true, y_pred=None, ignore=None, k=25):
@@ -168,10 +165,8 @@ def build_model():
         callbacks=[
             skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
-            skorch.callbacks.EpochScoring(ppx("train_loss"), on_train=True),
-            skorch.callbacks.EpochScoring(ppx("valid_loss"), on_train=False),
-            skorch.callbacks.EpochScoring(
-                scoring, name="recall@25", on_train=False),
+            skorch.callbacks.EpochScoring(ppx, name="valid_perplexity"),
+            skorch.callbacks.EpochScoring(scoring, name="recall@25"),
             skorch.callbacks.ProgressBar('count'),
         ],
     )
