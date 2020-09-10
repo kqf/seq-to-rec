@@ -65,20 +65,11 @@ class CollaborativeModel(torch.nn.Module):
         return self._out(lstm_out)
 
 
-def shift(seq, by):
-    """
-        Shift the sequence by one
-        seq -- tensor[seq_len, batch_size],
-        by -- int,
-    """
-    return torch.cat([seq[by:], seq.new_ones((by, seq.shape[1]))])
-
-
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
-        logits = y_pred.view(-1, y_pred.shape[-1])
-        targets = shift(X.T, by=1)
-        return self.criterion_(logits, targets.view(-1))
+        logits = y_pred[:, :-1, :].permute(1, 0, 2)
+        targets = X[:, 1:].T.to(self.device)
+        return self.criterion_(logits.view(-1), targets.view(-1))
 
     def transform(self, X, at=20):
         self.module_.eval()
