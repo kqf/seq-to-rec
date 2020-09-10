@@ -68,8 +68,10 @@ class CollaborativeModel(torch.nn.Module):
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred[:, :-1, :].permute(1, 0, 2)
+        logits = logits.reshape(-1, y_pred.shape[-1])
+
         targets = X[:, 1:].T.to(self.device)
-        return self.criterion_(logits.view(-1), targets.view(-1))
+        return self.criterion_(logits, targets.reshape(-1))
 
     def transform(self, X, at=20):
         self.module_.eval()
