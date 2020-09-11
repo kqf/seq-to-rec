@@ -65,13 +65,25 @@ class CollaborativeModel(torch.nn.Module):
         return self._out(lstm_out)
 
 
+def sample_batch_parallel(criterion, logits, targets):
+    losses = []
+    for candidates, sampled in zip(logits, targets):
+        losses.append(criterion(candidates[:, sampled]))
+    return torch.mean(torch.stack(losses))
+
+
+class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
+    def forward(self, logits):
+        # Assuming the logits is square matrics, with true answers on diagonal
+        labels = torch.arange(logits.shape[-1], device=logits.device)
+        return super().forward(logits, labels)
+
+
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred[:, :-1, :].permute(1, 0, 2)
-        logits = logits.reshape(-1, y_pred.shape[-1])
-
         targets = X[:, 1:].T.to(self.device)
-        return self.criterion_(logits, targets.reshape(-1))
+        return sample_batch_parallel(self.criterion_, logits, targets)
 
     def transform(self, X, at=20):
         self.module_.eval()
@@ -160,7 +172,7 @@ def build_model():
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
-        criterion=torch.nn.CrossEntropyLoss,
+        criterion=UnsupervisedCrossEntropy,
         max_epochs=4,
         batch_size=32,
         iterator_train=SequenceIterator,
@@ -196,6 +208,7 @@ def evaluate(model, data, title):
     preds = model.predict(data)
     recalls = [recall(g, p) for g, p in zip(gold, preds)]
     mean_recall = np.mean(recalls)
+
     print()
     print(f"{title} recall@25 {mean_recall:.4g}")
     mrr = np.mean([rr(g, p) for g, p in zip(gold, preds)])
