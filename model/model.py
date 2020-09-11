@@ -180,21 +180,26 @@ def build_model():
     return full
 
 
+def evaluate(model, data, title):
+    splitted = data["text"].str.split()
+    data["text"] = splitted.str[:-1]
+    gold = splitted.str[-1].values.reshape(-1, 1)
+
+    preds = model.predict(data)
+    recalls = [recall(g, p) for g, p in zip(gold, preds)]
+    mean_recall = np.mean(recalls)
+    print(f"{title} recall@25 {mean_recall:.4g}")
+
+
 @click.command()
 @click.option(
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, valid, test = read_data(path)
+    train = train[train["text"].str.split().str.len() < 125]
     model = build_model().fit(train)
-    train = train[train.str.split().str.len() < 125]
 
-    splitted = train["text"].str.split()
-    train["text"] = splitted.str[:-1]
-    gold = splitted.str[-1].values.reshape(-1, 1)
-
-    preds = model.predict(train)
-    recalls = [recall(g, p) for g, p in zip(gold, preds)]
-    print(np.mean(recalls))
+    evaluate(model, train, "train")
 
 
 if __name__ == '__main__':
