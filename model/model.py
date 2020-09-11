@@ -151,7 +151,7 @@ class SequenceIterator(BucketIterator):
 
 
 def ppx(model, X, y):
-    return np.exp(model.history[-1]["valid_loss"].item())
+    return np.exp(model.history[-1]["train_loss"].item())
 
 
 def recall(y_true, y_pred=None, ignore=None, k=25):
@@ -180,7 +180,7 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=BPRLoss,
-        max_epochs=4,
+        max_epochs=2,
         batch_size=32,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
@@ -189,13 +189,15 @@ def build_model():
         iterator_valid=SequenceIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
-        train_split=Dataset.split,
+        train_split=None,
         device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         callbacks=[
             skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
-            skorch.callbacks.EpochScoring(ppx, name="valid_perplexity"),
-            skorch.callbacks.EpochScoring(scoring, name="recall@25"),
+            skorch.callbacks.EpochScoring(
+                ppx, name="train_perplexity", on_train=True),
+            skorch.callbacks.EpochScoring(
+                scoring, name="recall@25", on_train=True),
             skorch.callbacks.ProgressBar('count'),
         ],
     )
