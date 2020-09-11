@@ -142,6 +142,14 @@ def recall(y_true, y_pred=None, ignore=None, k=25):
     return np.sum(relevant * mask) / y_true[:k].shape[0]
 
 
+def rr(y_true, y_pred, k=20):
+    relevant = np.in1d(y_pred[:k], y_true)
+    if not relevant.any():
+        return 0
+    index = relevant.argmax()
+    return relevant[index] / (index + 1)
+
+
 def scoring(model, X, y, at=25):
     preds, gold = model.transform(X, at=at)
     return np.mean([recall(g, p) for g, p in zip(gold, preds)])
@@ -188,7 +196,10 @@ def evaluate(model, data, title):
     preds = model.predict(data)
     recalls = [recall(g, p) for g, p in zip(gold, preds)]
     mean_recall = np.mean(recalls)
+    print()
     print(f"{title} recall@25 {mean_recall:.4g}")
+    mrr = np.mean([rr(g, p) for g, p in zip(gold, preds)])
+    print(f"{title}    mrr@25 {mrr:.4g}")
 
 
 @click.command()
@@ -200,6 +211,7 @@ def main(path):
     model = build_model().fit(train)
 
     evaluate(model, train, "train")
+    evaluate(model, valid, "valid")
 
 
 if __name__ == '__main__':
