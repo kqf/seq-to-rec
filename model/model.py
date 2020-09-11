@@ -42,7 +42,7 @@ class DynamicVariablesSetter(skorch.callbacks.Callback):
     def on_train_begin(self, net, X, y):
         vocab = X.fields["text"].vocab
         net.set_params(module__vocab_size=len(vocab))
-        net.set_params(criterion__ignore_index=vocab["<pad>"])
+        # net.set_params(criterion__ignore_index=vocab["<pad>"])
 
         n_pars = self.count_parameters(net.module_)
         print(f'The model has {n_pars:,} trainable parameters')
@@ -70,6 +70,13 @@ def sample_batch_parallel(criterion, logits, targets):
     for candidates, sampled in zip(logits, targets):
         losses.append(criterion(candidates[:, sampled]))
     return torch.mean(torch.stack(losses))
+
+
+class BPRLoss(torch.nn.Module):
+    def forward(self, logits):
+        diff = logits.diag().view(-1, 1) - logits
+        loss = -torch.mean(torch.nn.functional.logsigmoid(diff))
+        return loss
 
 
 class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
@@ -172,7 +179,7 @@ def build_model():
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
-        criterion=UnsupervisedCrossEntropy,
+        criterion=BPRLoss,
         max_epochs=4,
         batch_size=32,
         iterator_train=SequenceIterator,
