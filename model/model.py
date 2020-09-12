@@ -85,6 +85,19 @@ def sample_batch_parallel(criterion, logits, targets):
     return torch.mean(torch.stack(losses))
 
 
+class FlattenCriterion(torch.nn.Module):
+    def __init__(self, criterion):
+        super().__init__()
+        self.criterion = criterion
+
+    def forward(self, logits, targets):
+        n_outputs = logits.shape[-1]
+        return self.criterion(
+            logits.reshape(-1, n_outputs),
+            targets.reshape(-1)
+        )
+
+
 class BPRLoss(torch.nn.Module):
     def forward(self, logits):
         diff = logits.diag().view(-1, 1) - logits
@@ -193,7 +206,8 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         # criterion=BPRLoss,
-        criterion=torch.nn.CrossEntropyLoss,
+        criterion=FlattenCriterion,
+        criterion__criterion=torch.nn.CrossEntropyLoss(),
         max_epochs=2,
         batch_size=32,
         iterator_train=SequenceIterator,
