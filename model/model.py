@@ -70,19 +70,26 @@ class CollaborativeModel(torch.nn.Module):
         super().__init__()
         self._emb = torch.nn.Embedding(vocab_size, emb_dim)
         self._fc0 = torch.nn.Linear(emb_dim, hidden_dim)
+        self._fc1 = torch.nn.Linear(hidden_dim, hidden_dim)
         self._out = torch.nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, inputs, hidden=None):
         embedded = self._emb(inputs)
         hidden = self._fc0(embedded)
+        hidden = self._fc1(hidden)
         return self._out(hidden)
 
 
-def sample_batch_parallel(criterion, logits, targets):
-    losses = []
-    for candidates, sampled in zip(logits, targets):
-        losses.append(criterion(candidates[:, sampled]))
-    return torch.mean(torch.stack(losses))
+class SampledCriterion(torch.nn.Module):
+    def __init__(self, criterion):
+        super().__init__()
+        self.criterion = criterion
+
+    def forward(self, logits, targets):
+        losses = []
+        for candidates, sampled in zip(logits, targets):
+            losses.append(self.criterion(candidates[:, sampled]))
+        return torch.mean(torch.stack(losses))
 
 
 class FlattenCriterion(torch.nn.Module):
@@ -115,8 +122,8 @@ class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred[:, :-1, :].permute(1, 0, 2)
-        targets = X[:, 1:].T.to(self.device).reshape(-1)
-        return self.criterion_(logits.reshape(-1, y_pred.shape[-1]), targets)
+        targets = X[:, 1:].T.to(self.device)
+        return self.criterion_(logits, targets)
 
     def transform(self, X, at=20):
         self.module_.eval()
@@ -205,9 +212,8 @@ def build_model():
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
-        # criterion=BPRLoss,
-        criterion=FlattenCriterion,
-        criterion__criterion=torch.nn.CrossEntropyLoss(),
+        criterion=SampledCriterion,
+        criterion__criterion=BPRLoss(),
         max_epochs=2,
         batch_size=32,
         iterator_train=SequenceIterator,
