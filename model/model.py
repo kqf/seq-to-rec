@@ -102,8 +102,8 @@ class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred[:, :-1, :].permute(1, 0, 2)
-        targets = X[:, 1:].T.to(self.device)
-        return sample_batch_parallel(self.criterion_, logits, targets)
+        targets = X[:, 1:].T.to(self.device).view(-1)
+        return self.criterion_(logits.view(-1, y_pred.shape[-1]), targets)
 
     def transform(self, X, at=20):
         self.module_.eval()
@@ -192,7 +192,8 @@ def build_model():
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
-        criterion=BPRLoss,
+        # criterion=BPRLoss,
+        criterion=torch.nn.CrossEntropyLoss,
         max_epochs=2,
         batch_size=32,
         iterator_train=SequenceIterator,
