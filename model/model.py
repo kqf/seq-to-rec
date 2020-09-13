@@ -121,7 +121,7 @@ class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
 
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
-        logits = y_pred.permute(1, 0, 2)
+        logits = y_pred[:, :-1, :].permute(1, 0, 2)
         targets = y_true.T
         return self.criterion_(logits, targets)
 
@@ -183,7 +183,7 @@ class SequenceIterator(BucketIterator):
             yield batch.text, None
 
 
-class NegativeSamplingIterator(BucketIterator):
+class BatchSamplingIterator(BucketIterator):
     def __iter__(self):
         for batch in super().__iter__():
             yield batch.text, batch.text[:, 1:]
@@ -222,11 +222,11 @@ def build_model():
         criterion__criterion=BPRLoss(),
         max_epochs=2,
         batch_size=32,
-        iterator_train=NegativeSamplingIterator,
+        iterator_train=BatchSamplingIterator,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
-        iterator_valid=NegativeSamplingIterator,
+        iterator_valid=BatchSamplingIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=None,
