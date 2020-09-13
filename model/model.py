@@ -107,7 +107,7 @@ class FlattenCriterion(torch.nn.Module):
 
 def batch_diagonal(x):
     i = torch.arange(x.shape[-1]).repeat(x.shape[0] // x.shape[-1])
-    return x.view(-1)[i]
+    return x[:, i].diag()
 
 
 class BPRLoss(torch.nn.Module):
