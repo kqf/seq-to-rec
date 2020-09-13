@@ -86,10 +86,10 @@ class SampledCriterion(torch.nn.Module):
         self.criterion = criterion
 
     def forward(self, logits, targets):
-        losses = []
-        for candidates, sampled in zip(logits, targets):
-            losses.append(self.criterion(candidates[:, sampled]))
-        return torch.mean(torch.stack(losses))
+        batch_size = targets.shape[-1]
+        y = targets.repeat(1, batch_size).view(-1, batch_size)
+        logits = logits.reshape(-1, logits.shape[-1])
+        return self.criterion(torch.take(logits, y))
 
 
 class FlattenCriterion(torch.nn.Module):
@@ -219,7 +219,7 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=SampledCriterion,
-        criterion__criterion=BPRLoss(),
+        criterion__criterion=UnsupervisedCrossEntropy(),
         max_epochs=2,
         batch_size=32,
         iterator_train=BatchSamplingIterator,
