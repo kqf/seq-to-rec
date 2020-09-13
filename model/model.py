@@ -105,9 +105,15 @@ class FlattenCriterion(torch.nn.Module):
         )
 
 
+def batch_diagonal(x):
+    i = torch.arange(x.shape[-1]).repeat(x.shape[0] // x.shape[-1])
+    return x.view(-1)[i]
+
+
 class BPRLoss(torch.nn.Module):
     def forward(self, logits):
-        diff = logits.diag().view(-1, 1) - logits
+        diag = batch_diagonal(logits)
+        diff = diag.view(-1, 1) - logits
         loss = -torch.mean(torch.nn.functional.logsigmoid(diff))
         return loss
 
@@ -219,7 +225,7 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=SampledCriterion,
-        criterion__criterion=UnsupervisedCrossEntropy(),
+        criterion__criterion=BPRLoss(),
         max_epochs=2,
         batch_size=32,
         iterator_train=BatchSamplingIterator,
