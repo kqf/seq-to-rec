@@ -113,8 +113,8 @@ class BPRLoss(torch.nn.Module):
     def forward(self, logits):
         diag = batch_diagonal(logits)
         diff = diag.view(-1, 1) - logits
-        loss = -torch.mean(torch.nn.functional.logsigmoid(diff))
-        return loss
+        losses = torch.nn.functional.logsigmoid(diff).mean(dim=-1)
+        return -losses.mean()
 
 
 class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
@@ -222,7 +222,8 @@ def build_model():
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
-        criterion=FlattenCrossEntropy,
+        criterion=SampledCriterion,
+        criterion__criterion=BPRLoss(),
         max_epochs=2,
         batch_size=32,
         iterator_train=BatchSamplingIterator,
