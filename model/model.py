@@ -122,8 +122,8 @@ class Top1Loss(torch.nn.Module):
         diag = batch_diagonal(logits).view(-1, 1)
         diff = diag.view(-1, 1) - logits
         losses = (
-            torch.nn.functional.sigmoid(diff) +  # noqa
-            torch.nn.functional.sigmoid(diag ** 2)).mean(dim=-1)
+            torch.nn.functional.sigmoid(-diff) +  # noqa
+            torch.nn.functional.sigmoid(logits ** 2)).mean(dim=-1)
         return -losses.mean()
 
 
