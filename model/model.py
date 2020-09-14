@@ -92,14 +92,10 @@ class SampledCriterion(torch.nn.Module):
         return self.criterion(torch.take(logits, y))
 
 
-class FlattenCriterion(torch.nn.Module):
-    def __init__(self, criterion):
-        super().__init__()
-        self.criterion = criterion
-
+class FlattenCrossEntropy(torch.nn.CrossEntropyLoss):
     def forward(self, logits, targets):
         n_outputs = logits.shape[-1]
-        return self.criterion(
+        return super().forward(
             logits.reshape(-1, n_outputs),
             targets.reshape(-1)
         )
@@ -226,8 +222,7 @@ def build_model():
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
-        criterion=SampledCriterion,
-        criterion__criterion=UnsupervisedCrossEntropy(),
+        criterion=FlattenCrossEntropy,
         max_epochs=2,
         batch_size=32,
         iterator_train=BatchSamplingIterator,
