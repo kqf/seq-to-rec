@@ -117,6 +117,16 @@ class BPRLoss(torch.nn.Module):
         return -losses.mean()
 
 
+class Top1Loss(torch.nn.Module):
+    def forward(self, logits):
+        diag = batch_diagonal(logits).view(-1, 1)
+        diff = diag.view(-1, 1) - logits
+        losses = (
+            torch.nn.functional.sigmoid(diff) +  # noqa
+            torch.nn.functional.sigmoid(diag ** 2)).mean(dim=-1)
+        return -losses.mean()
+
+
 class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
     def forward(self, logits):
         # Assuming the logits is square matrics, with true answers on diagonal
@@ -223,7 +233,7 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=SampledCriterion,
-        criterion__criterion=BPRLoss(),
+        criterion__criterion=Top1Loss(),
         max_epochs=2,
         batch_size=32,
         iterator_train=BatchSamplingIterator,
