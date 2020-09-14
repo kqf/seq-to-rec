@@ -105,9 +105,12 @@ class FlattenCriterion(torch.nn.Module):
         )
 
 
+def batch_diagonal_idx(x):
+    return torch.arange(x.shape[-1]).repeat(x.shape[0] // x.shape[-1])
+
+
 def batch_diagonal(x):
-    i = torch.arange(x.shape[-1]).repeat(x.shape[0] // x.shape[-1])
-    return x[:, i].diag()
+    return x[:, batch_diagonal_idx(x)].diag()
 
 
 class BPRLoss(torch.nn.Module):
@@ -121,8 +124,7 @@ class BPRLoss(torch.nn.Module):
 class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
     def forward(self, logits):
         # Assuming the logits is square matrics, with true answers on diagonal
-        labels = torch.arange(logits.shape[-1], device=logits.device)
-        return super().forward(logits, labels)
+        return super().forward(logits, batch_diagonal_idx(logits))
 
 
 class SeqNet(skorch.NeuralNet):
@@ -225,7 +227,7 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=SampledCriterion,
-        criterion__criterion=BPRLoss(),
+        criterion__criterion=UnsupervisedCrossEntropy(),
         max_epochs=2,
         batch_size=32,
         iterator_train=BatchSamplingIterator,
