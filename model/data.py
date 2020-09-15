@@ -26,9 +26,6 @@ def read_file(path, filename, frac=None):
 
     # Remove short sessions
     cleaned = remove_short(df, min_size=1)
-
-    # Keep the items that have at least 4 interactions
-    cleaned = remove_short(df, "item_id", min_size=4)
     return cleaned
 
 
