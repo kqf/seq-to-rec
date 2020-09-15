@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 
-def read_file(path, filename):
+def read_file(path, filename, frac=None):
     df = pd.read_csv(
         pathlib.Path(path) / filename,
         sep=',',
@@ -16,6 +16,9 @@ def read_file(path, filename):
         dtype={0: np.int32, 1: str, 2: np.int64},
     )
     df["time"] = pd.to_datetime(df["time"])
+
+    if frac is not None:
+        df = df.sample(frac=frac)
 
     # Ensure the data is in the right order
     df = df.sort_values(["session_id", "time"])
@@ -52,7 +55,7 @@ def build_sessions(
 @click.option("--train", default='yoochoose-test.dat')
 @click.option("--test", default='yoochoose-test.dat')
 def main(raw, out, train, test):
-    train = read_file(raw, train)
+    train = read_file(raw, train, frac=1. / 64.)
     test = read_file(raw, test)
 
     # Ensure test contains the same ids as the train
