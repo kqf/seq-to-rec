@@ -70,14 +70,12 @@ class CollaborativeModel(torch.nn.Module):
         super().__init__()
         self._emb = torch.nn.Embedding(vocab_size, emb_dim)
         self._fc0 = torch.nn.Linear(emb_dim, hidden_dim)
-        self._fc1 = torch.nn.Linear(hidden_dim, hidden_dim)
         self._out = torch.nn.Linear(hidden_dim, vocab_size)
 
     def forward(self, inputs, hidden=None):
         embedded = self._emb(inputs)
         # Sum over seq dimension
         hidden = self._fc0(torch.cumsum(embedded, dim=1))
-        hidden = self._fc1(hidden)
         return self._out(hidden)
 
 
