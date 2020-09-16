@@ -188,7 +188,7 @@ def build_preprocessor():
     fields = [
         ('text', text_field),
     ]
-    return TextPreprocessor(fields, min_freq=3)
+    return TextPreprocessor(fields, min_freq=4)
 
 
 class SequenceIterator(BucketIterator):
