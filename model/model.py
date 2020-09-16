@@ -75,7 +75,9 @@ class CollaborativeModel(torch.nn.Module):
 
     def forward(self, inputs, hidden=None):
         embedded = self._emb(inputs)
-        hidden = self._fc0(embedded)
+        # Average over seq dimension
+        mean = embedded.mean(dim=1, keepdim=True)
+        hidden = self._fc0(embedded - mean)
         hidden = self._fc1(hidden)
         return self._out(hidden)
 
