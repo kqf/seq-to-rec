@@ -74,8 +74,12 @@ class CollaborativeModel(torch.nn.Module):
 
     def forward(self, inputs, hidden=None):
         embedded = self._emb(inputs)
-        # Sum over seq dimension
-        hidden = self._fc0(torch.cumsum(embedded, dim=1))
+
+        # average over seq dimension
+        n = torch.arange(embedded.shape[1], device=embedded.device) + 1
+        cmean = torch.cumsum(embedded, dim=1) / n[None, :, None]
+
+        hidden = self._fc0(cmean)
         return self._out(hidden)
 
 
@@ -231,8 +235,7 @@ def build_model():
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
-        criterion=SampledCriterion,
-        criterion__criterion=Top1Loss(),
+        criterion=FlattenCrossEntropy,
         max_epochs=2,
         batch_size=32,
         iterator_train=BatchSamplingIterator,
