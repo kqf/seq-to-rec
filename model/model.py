@@ -145,6 +145,8 @@ class SeqNet(skorch.NeuralNet):
     def transform(self, X, at=20):
         self.module_.eval()
         xpreds, labels = [], []
+        pad_idx = X.fields["text"].vocab.stoi["<pad>"]
+        unk_idx = X.fields["text"].vocab.stoi["<unk>"]
         for (x, _) in self.get_iterator(self.get_dataset(X), training=False):
             with torch.no_grad():
                 preds = self.module_(x.to(self.device))
@@ -157,7 +159,11 @@ class SeqNet(skorch.NeuralNet):
                 candidates = candidates.detach().cpu().numpy()
 
             true_labels = x[:, 1:].reshape(-1, 1).detach().cpu().numpy()
-            xpreds.append(candidates), labels.append(true_labels)
+
+            idx = ((true_labels != pad_idx) | (true_labels != unk_idx))
+            idx = idx.reshape(-1)
+
+            xpreds.append(candidates[idx]), labels.append(true_labels[idx])
         return np.vstack(xpreds), np.vstack(labels)
 
     def predict_proba(self, X):
@@ -259,7 +265,7 @@ def build_model():
     )
 
     full = make_pipeline(
-        build_preprocessor(min_freq=5),
+        build_preprocessor(min_freq=1),
         model,
     )
     return full
@@ -285,7 +291,7 @@ def evaluate(model, data, title):
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, valid, test = read_data(path)
-    train = train[train["text"].str.split().str.len() < 125]
+    # train = train[train["text"].str.split().str.len()]
     model = build_model().fit(train)
 
     evaluate(model, train, "train")
