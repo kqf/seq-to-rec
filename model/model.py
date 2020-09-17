@@ -181,7 +181,7 @@ def tokenize(x):
     return x.split()
 
 
-def build_preprocessor():
+def build_preprocessor(min_freq=5):
     text_field = Field(
         tokenize=tokenize,
         init_token=None,
@@ -191,7 +191,7 @@ def build_preprocessor():
     fields = [
         ('text', text_field),
     ]
-    return TextPreprocessor(fields, min_freq=4)
+    return TextPreprocessor(fields, min_freq=min_freq)
 
 
 class SequenceIterator(BucketIterator):
@@ -259,7 +259,7 @@ def build_model():
     )
 
     full = make_pipeline(
-        build_preprocessor(),
+        build_preprocessor(min_freq=5),
         model,
     )
     return full
