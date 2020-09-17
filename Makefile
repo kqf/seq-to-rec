@@ -8,7 +8,7 @@ train: data/processed
 data/processed: data/
 	python model/data.py --raw $^ --out $@
 
-data: $(archived)
+data/: $(archived)
 	unzip 55175_105481_bundle_archive.zip -d data/
 
 	@# Remove the duplicate file
