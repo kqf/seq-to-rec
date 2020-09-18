@@ -139,8 +139,8 @@ class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred[:, :-1, :].permute(1, 0, 2)
-        targets = y_true.T
-        return self.criterion_(logits, targets)
+        targets = X[:, 1:].T
+        return self.criterion_(logits, targets.to(logits.device))
 
     def transform(self, X, at=20):
         self.module_.eval()
@@ -209,7 +209,7 @@ class SequenceIterator(BucketIterator):
 class BatchSamplingIterator(BucketIterator):
     def __iter__(self):
         for batch in super().__iter__():
-            yield batch.text, batch.text[:, 1:]
+            yield batch.text, batch[:, 1:].text
 
 
 def ppx(model, X, y):
@@ -242,13 +242,13 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=FlattenCrossEntropy,
-        max_epochs=2,
+        max_epochs=8,
         batch_size=32,
-        iterator_train=BatchSamplingIterator,
+        iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
-        iterator_valid=BatchSamplingIterator,
+        iterator_valid=SequenceIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=None,
@@ -256,8 +256,8 @@ def build_model():
         callbacks=[
             skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
-            skorch.callbacks.EpochScoring(
-                ppx, name="train_perplexity", on_train=True),
+            # skorch.callbacks.EpochScoring(
+            #     ppx, name="train_perplexity", on_train=True),
             skorch.callbacks.EpochScoring(
                 scoring, name="recall@25", on_train=True),
             skorch.callbacks.ProgressBar('count'),
