@@ -38,9 +38,8 @@ def build_sessions(
     min_len=1,
 ):
     df[item_col] = df[item_col].astype(str)
-    sess = df.groupby(session_col)[item_col].transform(list)
-    sess = sess[sess.str.len() > min_len]
-    return sess.apply(lambda x: " ".join(x))
+    sess = df.groupby(session_col)[item_col].transform(lambda x: " ".join(x))
+    return sess[sess.str.split().str.len() > min_len]
 
 
 @click.command()

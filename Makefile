@@ -12,7 +12,6 @@ data/:
 	kaggle datasets download -d chadgostopp/recsys-challenge-2015
 
 	mv recsys-challenge-2015.zip $(archived)
-	mkdir -p data/
 	unzip $(archived) -d data/
 
 	@# Remove the duplicate file
