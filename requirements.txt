@@ -8,3 +8,4 @@ scikit-learn
 torchtext
 torch
 skorch
+gpustat
