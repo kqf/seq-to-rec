@@ -16,15 +16,19 @@ def read_file(path, filename, frac=None):
         dtype={0: np.int32, 1: str, 2: np.int64},
     )
     df["time"] = pd.to_datetime(df["time"])
-    df = remove_short(df)
 
     if frac is not None:
         n_items = len(df["item_id"].unique())
         print(f"Before sampling {n_items} items")
-        df = df.sample(frac=frac)
+        print(f"Before sampling {len(df)} lines")
+        df = sample(df, frac)
 
         n_items = len(df["item_id"].unique())
         print(f"After sampling {n_items} items")
+        print(f"After sampling {len(df)} lines")
+
+    df = remove_short(df, "item_id", 1)
+    df = remove_short(df)
 
     # Ensure the data is in the right order
     df = df.sort_values(["session_id", "time"])
@@ -35,6 +39,13 @@ def read_file(path, filename, frac=None):
 def remove_short(data, col="session_id", min_size=1):
     lengths = data.groupby(col).size()
     return data[np.in1d(data[col], lengths[lengths > min_size].index)]
+
+
+def sample(data, frac=1., col="session_id"):
+    session_ids = data[col].unique()
+    n_samples = int(len(session_ids) * frac)
+    sampled = np.random.choice(session_ids, n_samples, replace=False)
+    return data[np.in1d(data[col], sampled)]
 
 
 def build_sessions(
