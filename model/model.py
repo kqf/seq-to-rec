@@ -46,6 +46,7 @@ class DynamicVariablesSetter(skorch.callbacks.Callback):
 
         n_pars = self.count_parameters(net.module_)
         print(f'The model has {n_pars:,} trainable parameters')
+        print(f'There number of unique items is {len(vocab)}')
 
     @staticmethod
     def count_parameters(model):
@@ -242,7 +243,7 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=FlattenCrossEntropy,
-        max_epochs=8,
+        max_epochs=2,
         batch_size=32,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
@@ -258,14 +259,14 @@ def build_model():
             DynamicVariablesSetter(),
             # skorch.callbacks.EpochScoring(
             #     ppx, name="train_perplexity", on_train=True),
-            skorch.callbacks.EpochScoring(
-                scoring, name="recall@25", on_train=True),
+            # skorch.callbacks.EpochScoring(
+            #     scoring, name="recall@25", on_train=True),
             skorch.callbacks.ProgressBar('count'),
         ],
     )
 
     full = make_pipeline(
-        build_preprocessor(min_freq=1),
+        build_preprocessor(min_freq=2),
         model,
     )
     return full
