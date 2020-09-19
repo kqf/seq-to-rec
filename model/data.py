@@ -6,6 +6,18 @@ import numpy as np
 import pandas as pd
 
 
+def report(df, msg):
+    n_items = len(df["item_id"].unique())
+    n_sessions = len(df["session_id"].unique())
+    av_length = df.groupby("session_id")["item_id"].size().mean()
+
+    print(msg)
+    print(f"Number of clicks {len(df)}")
+    print(f"Number of items {n_items}")
+    print(f"Number of sessions {n_sessions}")
+    print(f"Average session length {av_length:.2f}")
+
+
 def read_file(path, filename, frac=None):
     df = pd.read_csv(
         pathlib.Path(path) / filename,
@@ -16,22 +28,17 @@ def read_file(path, filename, frac=None):
         dtype={0: np.int32, 1: str, 2: np.int64},
     )
     df["time"] = pd.to_datetime(df["time"])
-
-    if frac is not None:
-        n_items = len(df["item_id"].unique())
-        print(f"Before sampling {n_items} items")
-        print(f"Before sampling {len(df)} lines")
-        df = sample(df, frac)
-
-        n_items = len(df["item_id"].unique())
-        print(f"After sampling {n_items} items")
-        print(f"After sampling {len(df)} lines")
-
-    df = remove_short(df, "item_id", 1)
-    df = remove_short(df)
+    # df = remove_short(df, "item_id", 1)
+    # df = remove_short(df)
 
     # Ensure the data is in the right order
     df = df.sort_values(["session_id", "time"])
+
+    if frac is not None:
+        report(df, "Before sampling:")
+        df = sample(df, frac)
+        report(df, "After sampling:")
+
     df.reset_index(inplace=True)
     return df
 
@@ -42,10 +49,10 @@ def remove_short(data, col="session_id", min_size=1):
 
 
 def sample(data, frac=1., col="session_id"):
-    session_ids = data[col].unique()
-    n_samples = int(len(session_ids) * frac)
-    sampled = np.random.choice(session_ids, n_samples, replace=False)
-    return data[np.in1d(data[col], sampled)]
+    n_samples = int(len(data) * frac)
+    oldest = data[-n_samples:]
+    session_ids = oldest[col].unique()
+    return oldest[np.in1d(oldest[col], session_ids)]
 
 
 def build_sessions(
