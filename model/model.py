@@ -150,14 +150,14 @@ class SeqNet(skorch.NeuralNet):
         unk_idx = X.fields["text"].vocab.stoi["<unk>"]
         for (x, _) in self.get_iterator(self.get_dataset(X), training=False):
             with torch.no_grad():
-                preds = self.module_(x.to(self.device))
+                preds = self.module_(x.to(self.device)).detach()
 
                 # Don't generate candidate for the last item in the sequence
                 candidates = (-preds).argsort(-1)[:, :-1, :at]
 
                 # Flatten the data
                 candidates = candidates.reshape(-1, candidates.shape[-1])
-                candidates = candidates.detach().cpu().numpy()
+                candidates = candidates.cpu().numpy()
 
             true_labels = x[:, 1:].reshape(-1, 1).detach().cpu().numpy()
 
@@ -207,17 +207,11 @@ class SequenceIterator(BucketIterator):
             yield batch.text, None
 
 
-class BatchSamplingIterator(BucketIterator):
-    def __iter__(self):
-        for batch in super().__iter__():
-            yield batch.text, batch[:, 1:].text
-
-
 def ppx(model, X, y):
     return np.exp(model.history[-1]["train_loss"].item())
 
 
-def recall(y_true, y_pred=None, ignore=None, k=25):
+def recall(y_true, y_pred=None, ignore=None, k=20):
     y_pred = y_pred[:k]
     mask = ~(y_pred == ignore)
     relevant = np.in1d(y_pred[:k], y_true)
@@ -232,8 +226,8 @@ def rr(y_true, y_pred, k=20):
     return relevant[index] / (index + 1)
 
 
-def scoring(model, X, y, at=25):
-    preds, gold = model.transform(X, at=at)
+def scoring(model, X, y, at=20):
+    preds, gold = model.transform(X.sample(frac=0.01), at=at)
     return np.mean([recall(g, p) for g, p in zip(gold, preds)])
 
 
@@ -243,8 +237,8 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         optimizer=torch.optim.Adam,
         criterion=FlattenCrossEntropy,
-        max_epochs=2,
-        batch_size=32,
+        max_epochs=10,
+        batch_size=64,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
@@ -255,7 +249,7 @@ def build_model():
         train_split=None,
         device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         callbacks=[
-            skorch.callbacks.GradientNormClipping(1.),
+            # skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
             # skorch.callbacks.EpochScoring(
             #     ppx, name="train_perplexity", on_train=True),
@@ -266,7 +260,7 @@ def build_model():
     )
 
     full = make_pipeline(
-        build_preprocessor(min_freq=5),
+        build_preprocessor(min_freq=1),
         model,
     )
     return full
@@ -292,11 +286,11 @@ def evaluate(model, data, title):
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, valid, test = read_data(path)
-    # train = train[train["text"].str.split().str.len()]
     model = build_model().fit(train)
 
-    evaluate(model, train, "train")
-    evaluate(model, valid, "valid")
+    model[-1].set_params(batch_size=32)
+    evaluate(model, train.sample(frac=0.015), "train")
+    evaluate(model, valid.sample(frac=0.5), "valid")
 
 
 if __name__ == '__main__':
