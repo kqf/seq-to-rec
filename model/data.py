@@ -28,6 +28,8 @@ def read_file(path, filename, frac=None):
         dtype={0: np.int32, 1: str, 2: np.int64},
     )
     df["time"] = pd.to_datetime(df["time"])
+    df = remove_short(df, "item_id", 15)
+    df = remove_short(df)
 
     # Ensure the data is in the right order
     df = df.sort_values(["session_id", "time"]).reset_index()
@@ -36,10 +38,6 @@ def read_file(path, filename, frac=None):
         report(df, "Before sampling:")
         df = sample(df, frac)
         report(df, "After sampling:")
-
-        df = remove_short(df, "item_id")
-        df = remove_short(df)
-        report(df, "After cleanup:")
 
     df.reset_index(inplace=True)
     return df
@@ -52,12 +50,13 @@ def remove_short(data, col="session_id", min_size=1):
 
 def sample(data, frac=1., col="session_id"):
     n_samples = int(len(data) * frac)
-    data["is_train"] = data.index > data.index.max() - n_samples
-    old, recent = data.groupby("is_train")[col].apply(set)
+    train = data.index > data.index.max() - n_samples
 
-    del data["is_train"]
+    old = data.loc[~train, col].unique()
+    recent = data.loc[train, col].unique()
+
     # Take only the most recent data
-    return data[np.in1d(data[col], list(recent - old))]
+    return data[np.in1d(data[col], list(set(recent) - set(old)))]
 
 
 def build_sessions(
@@ -74,10 +73,10 @@ def build_sessions(
 @click.command()
 @click.option("--raw", type=click.Path(exists=False))
 @click.option("--out", type=click.Path(exists=False))
-@click.option("--train", default='yoochoose-test.dat')
+@click.option("--train", default='yoochoose-clicks.dat')
 @click.option("--test", default='yoochoose-test.dat')
 def main(raw, out, train, test):
-    train = read_file(raw, train, frac=1. / 4.)
+    train = read_file(raw, train, frac=1. / 64.)
     test = read_file(raw, test)
 
     # Ensure test contains the same ids as the train

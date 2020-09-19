@@ -266,7 +266,7 @@ def build_model():
     )
 
     full = make_pipeline(
-        build_preprocessor(min_freq=2),
+        build_preprocessor(min_freq=5),
         model,
     )
     return full

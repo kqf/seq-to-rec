@@ -23,5 +23,6 @@ data/:
 
 clean:
 	rm -rf $(archived)
+	rm -rf data/processed/
 
 .PHONY: train
