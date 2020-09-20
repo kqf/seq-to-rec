@@ -70,6 +70,10 @@ def build_sessions(
     return sess
 
 
+def dump(sessions, path):
+    sessions.to_csv(path, index=False, header=None)
+
+
 @click.command()
 @click.option("--raw", type=click.Path(exists=False))
 @click.option("--out", type=click.Path(exists=False))
@@ -95,9 +99,9 @@ def main(raw, out, train, test):
     opath = pathlib.Path(out)
     opath.mkdir(parents=True, exist_ok=False)
 
-    train_sessions.to_csv(opath / "train.txt", index=False, header=None)
-    valid_sessions.to_csv(opath / "valid.txt", index=False, header=None)
-    test_sessions.to_csv(opath / "test.txt", index=False, header=None)
+    dump(train_sessions, opath / "train.txt")
+    dump(valid_sessions, opath / "valid.txt")
+    dump(test_sessions, opath / "test.txt")
 
 
 if __name__ == '__main__':
