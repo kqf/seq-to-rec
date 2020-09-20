@@ -7,6 +7,8 @@ train: data/processed
 
 data/processed: data/
 	python model/data.py --raw $^ --out $@
+	@echo "Training dataset:"
+	@head data/processed/train.txt
 
 data/: 
 	kaggle datasets download -d chadgostopp/recsys-challenge-2015
@@ -22,7 +24,6 @@ data/:
 
 
 clean:
-	rm -rf $(archived)
 	rm -rf data/processed/
 
 .PHONY: train
