@@ -33,13 +33,6 @@ def read_file(path, filename, frac=None):
 
     # Ensure the data is in the right order
     df = df.sort_values(["session_id", "time"]).reset_index()
-
-    if frac is not None:
-        report(df, "Before sampling:")
-        df = sample(df, frac)
-        report(df, "After sampling:")
-
-    df.reset_index(inplace=True)
     return df
 
 
@@ -48,7 +41,10 @@ def remove_short(data, col="session_id", min_size=1):
     return data[np.in1d(data[col], lengths[lengths > min_size].index)]
 
 
-def sample(data, frac=1., col="session_id"):
+def sample(data, frac=None, col="session_id"):
+    if frac is None:
+        return data
+
     n_samples = int(len(data) * frac)
     train = data.index > data.index.max() - n_samples
 
@@ -81,13 +77,17 @@ def dump(sessions, path):
 @click.option("--train", default='yoochoose-clicks.dat')
 @click.option("--test", default='yoochoose-test.dat')
 def main(raw, out, train, test):
-    train = read_file(raw, train, frac=1. / 64.)
+    train = read_file(raw, train)
     test = read_file(raw, test)
 
     # Take the last day for validation
     split_day = train["time"].max() - datetime.timedelta(days=1)
     valid = train[train["time"] >= split_day]
     train = train[train["time"] < split_day]
+
+    report(train, "Before sampling:")
+    train = sample(train, 1. / 64)
+    report(train, "After sampling:")
 
     # Ensure test contains the same ids as the train
     # This is a very doubtful operation!
