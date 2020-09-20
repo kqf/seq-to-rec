@@ -84,14 +84,15 @@ def main(raw, out, train, test):
     train = read_file(raw, train, frac=1. / 64.)
     test = read_file(raw, test)
 
-    # Ensure test contains the same ids as the train
-    # This is a very doubtful operation!
-    test = test[np.in1d(test["item_id"], train["item_id"])]
-
     # Take the last day for validation
     split_day = train["time"].max() - datetime.timedelta(days=1)
     valid = train[train["time"] >= split_day]
     train = train[train["time"] < split_day]
+
+    # Ensure test contains the same ids as the train
+    # This is a very doubtful operation!
+    test = test[np.in1d(test["item_id"], train["item_id"])]
+    valid = valid[np.in1d(valid["item_id"], train["item_id"])]
 
     train_sessions = build_sessions(train)
     valid_sessions = build_sessions(valid)
