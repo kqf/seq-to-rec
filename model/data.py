@@ -71,6 +71,7 @@ def build_sessions(
 
 
 def dump(sessions, path):
+    cleaned = sessions.apply(" ".join)
     sessions.to_csv(path, index=False, header=None)
 
 
