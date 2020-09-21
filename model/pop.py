@@ -20,13 +20,14 @@ class PopEstimator(BaseEstimator, TransformerMixin):
         self.popualar_ = None
 
     def fit(self, X, y=None):
-        exploded = X.str.split().explode("text")
+        exploded = X.str.split().explode()
         freq = exploded.groupby(exploded).size()
-        self.popualar_ = freq.sort_values(ascending=False)[:20]
+        popular = freq.sort_values(ascending=False)[:20].index.values
+        self.popualar_ = popular
         return self
 
     def predict(self, X):
-        return itertools.repeat(self.popualar_, len(X))
+        return list(itertools.repeat(self.popualar_, len(X)))
 
 
 @click.command()
@@ -34,8 +35,8 @@ class PopEstimator(BaseEstimator, TransformerMixin):
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
-    model = PopEstimator().fit(train)
-    print(model.predict(train))
+    model = PopEstimator().fit(train["text"])
+    print(len(model.predict(valid)))
 
 
 if __name__ == '__main__':
