@@ -17,7 +17,7 @@ def read_data(raw):
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
-    exploded = train.explode("text")
+    exploded = train.str.split().explode("text")
     freq = exploded.groupby(exploded).size()
     most_popular = freq.sort_values(ascending=False)[:20]
     print(most_popular)
