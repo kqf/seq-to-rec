@@ -3,6 +3,7 @@ import pathlib
 import pandas as pd
 import itertools
 
+import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
@@ -27,7 +28,8 @@ class PopEstimator(BaseEstimator, TransformerMixin):
         return self
 
     def predict(self, X):
-        return list(itertools.repeat(self.popualar_, len(X)))
+        preds = list(itertools.repeat(self.popualar_, len(X)))
+        return np.stack(preds)
 
 
 @click.command()
@@ -36,7 +38,7 @@ class PopEstimator(BaseEstimator, TransformerMixin):
 def main(path):
     train, test, valid = read_data(path)
     model = PopEstimator().fit(train["text"])
-    print(len(model.predict(valid)))
+    print(model.predict(valid).shape)
 
 
 if __name__ == '__main__':
