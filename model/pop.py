@@ -10,9 +10,9 @@ from sklearn.base import BaseEstimator, TransformerMixin
 def read_data(raw):
     path = pathlib.Path(raw)
     return (
-        pd.read_csv(path / 'train.txt', names=["text"]),
-        pd.read_csv(path / 'valid.txt', names=["text"]),
-        pd.read_csv(path / 'test.txt', names=["text"]),
+        pd.read_csv(path / 'train.txt', names=["text"])["text"].str.split(),
+        pd.read_csv(path / 'valid.txt', names=["text"])["text"].str.split(),
+        pd.read_csv(path / 'test.txt', names=["text"])["text"].str.split(),
     )
 
 
@@ -20,10 +20,12 @@ def split(x):
     return [(x[:i], x[i]) for i in range(1, len(x) - 1)]
 
 
-def ev_data(dataset, col="text"):
-    dataset["session_id"] = dataset.index
-    dataset["splitted"] = dataset[col].apply(split)
-    exploded = dataset.explode("splitted")
+def ev_data(dataset):
+    dataset = dataset[dataset.str.len() > 1]
+    data = pd.DataFrame({"session_id": dataset.index})
+    data["original"] = dataset
+    data["splitted"] = dataset.apply(split)
+    exploded = data.explode("splitted")
     exploded["observed"] = exploded["splitted"].str[0]
     exploded["gold"] = exploded["splitted"].str[1]
     return exploded
@@ -34,7 +36,7 @@ class PopEstimator(BaseEstimator, TransformerMixin):
         self.popualar_ = None
 
     def fit(self, X, y=None):
-        exploded = X.str.split().explode()
+        exploded = X.explode()
         freq = exploded.groupby(exploded).size()
         popular = freq.sort_values(ascending=False)[:20].index.values
         self.popualar_ = popular
@@ -50,8 +52,8 @@ class PopEstimator(BaseEstimator, TransformerMixin):
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
-    model = PopEstimator().fit(train["text"])
-    print(ev_data(valid))
+    model = PopEstimator().fit(train)
+    ev_valid = ev_data(valid)
     # print(model.predict(valid).shape)
 
 
