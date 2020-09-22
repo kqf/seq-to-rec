@@ -17,11 +17,11 @@ def read_data(raw):
 
 
 def split(x):
-    return [(x[:i], x[i]) for i in range(1, len(x) - 1)]
+    return [(x[:i + 1], x[i + 1]) for i in range(len(x) - 1)]
 
 
 def ev_data(dataset):
-    dataset = dataset[dataset.str.len() > 1]
+    dataset = dataset[dataset.str.len() > 1].reset_index(drop=True)
     data = pd.DataFrame({"session_id": dataset.index})
     data["original"] = dataset
     data["splitted"] = dataset.apply(split)
@@ -54,6 +54,7 @@ def main(path):
     train, test, valid = read_data(path)
     model = PopEstimator().fit(train)
     ev_valid = ev_data(valid)
+    print(ev_valid)
     # print(model.predict(valid).shape)
 
 
