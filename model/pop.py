@@ -23,12 +23,11 @@ def split(x):
 def ev_data(dataset):
     dataset = dataset[dataset.str.len() > 1].reset_index(drop=True)
     data = pd.DataFrame({"session_id": dataset.index})
-    data["original"] = dataset
     data["splitted"] = dataset.apply(split)
     exploded = data.explode("splitted")
     exploded["observed"] = exploded["splitted"].str[0]
     exploded["gold"] = exploded["splitted"].str[1]
-    return exploded
+    return exploded.drop(columns=["splitted"])
 
 
 class PopEstimator(BaseEstimator, TransformerMixin):
@@ -54,8 +53,8 @@ def main(path):
     train, test, valid = read_data(path)
     model = PopEstimator().fit(train)
     ev_valid = ev_data(valid)
+    predicted = model.predict(ev_valid)
     print(ev_valid)
-    # print(model.predict(valid).shape)
 
 
 if __name__ == '__main__':
