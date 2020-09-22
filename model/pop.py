@@ -20,6 +20,14 @@ def split(x):
     return [(x[:i + 1], x[i + 1]) for i in range(len(x) - 1)]
 
 
+def recall(y_true, y_pred=None, ignore=None, k=20):
+    y_true = np.atleast_1d(y_true)
+    y_pred = y_pred[:k]
+    mask = ~(y_pred == ignore)
+    relevant = np.in1d(y_pred[:k], y_true)
+    return np.sum(relevant * mask) / y_true[:k].shape[0]
+
+
 def ev_data(dataset):
     dataset = dataset[dataset.str.len() > 1].reset_index(drop=True)
     data = pd.DataFrame({"session_id": dataset.index})
@@ -54,7 +62,9 @@ def main(path):
     model = PopEstimator().fit(train)
     ev_valid = ev_data(valid)
     predicted = model.predict(ev_valid)
-    print(ev_valid)
+    ev_valid["recall"] = [
+        recall(g, p) for g, p in zip(ev_valid["gold"], predicted)]
+    print(ev_valid["recall"].mean())
 
 
 if __name__ == '__main__':
