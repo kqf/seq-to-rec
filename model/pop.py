@@ -16,6 +16,19 @@ def read_data(raw):
     )
 
 
+def split(x):
+    return [(x[:i], x[i]) for i in range(1, len(x) - 1)]
+
+
+def ev_data(dataset, col="text"):
+    dataset["session_id"] = dataset.index
+    dataset["splitted"] = dataset[col].apply(split)
+    exploded = dataset.explode("splitted")
+    exploded["observed"] = exploded["splitted"].str[0]
+    exploded["gold"] = exploded["splitted"].str[1]
+    return exploded
+
+
 class PopEstimator(BaseEstimator, TransformerMixin):
     def __init__(self):
         self.popualar_ = None
@@ -38,7 +51,8 @@ class PopEstimator(BaseEstimator, TransformerMixin):
 def main(path):
     train, test, valid = read_data(path)
     model = PopEstimator().fit(train["text"])
-    print(model.predict(valid).shape)
+    print(ev_data(valid))
+    # print(model.predict(valid).shape)
 
 
 if __name__ == '__main__':
