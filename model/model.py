@@ -224,11 +224,13 @@ def recall(y_true, y_pred=None, ignore=None, k=20):
 
 
 def rr(y_true, y_pred, k=20):
-    relevant = np.in1d(y_pred[:k], y_true)
-    if not relevant.any():
-        return 0
-    index = relevant.argmax()
-    return relevant[index] / (index + 1)
+    y_true, y_pred = np.atleast_2d(y_true, y_pred)
+    y_true = y_true.T[:, :k]
+    y_pred = y_pred[:, :k]
+
+    relevant = y_true == y_pred
+    index = relevant.argmax(-1)
+    return relevant.any(-1) / (index + 1)
 
 
 def scoring(model, X, y, at=20):
