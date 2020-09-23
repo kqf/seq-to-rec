@@ -1,3 +1,4 @@
+import time
 import click
 import pathlib
 import pandas as pd
@@ -5,6 +6,16 @@ import itertools
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
+from contextlib import contextmanager
+
+
+@contextmanager
+def timer(name):
+    t0 = time.time()
+    yield
+    print("{color}[{name}] done in {et:.0f} s{nocolor}".format(
+        name=name, et=time.time() - t0,
+        color='\033[1;33m', nocolor='\033[0m'))
 
 
 def read_data(raw):
@@ -59,11 +70,19 @@ class PopEstimator(BaseEstimator, TransformerMixin):
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
-    model = PopEstimator().fit(train)
-    ev_valid = ev_data(valid)
-    predicted = model.predict(ev_valid)
-    ev_valid["recall"] = [
-        recall(g, p) for g, p in zip(ev_valid["gold"], predicted)]
+    with timer("Fit the data"):
+        model = PopEstimator().fit(train)
+
+    with timer("Prepare the evaluation"):
+        ev_valid = ev_data(valid)
+
+    with timer("Predict"):
+        predicted = model.predict(ev_valid)
+
+    with timer("Calculate the measures"):
+        ev_valid["recall"] = [
+            recall(g, p) for g, p in zip(ev_valid["gold"], predicted)]
+
     print(ev_valid["recall"].mean())
 
 
