@@ -212,10 +212,15 @@ def ppx(model, X, y):
 
 
 def recall(y_true, y_pred=None, ignore=None, k=20):
-    y_pred = y_pred[:k]
-    mask = ~(y_pred == ignore)
-    relevant = np.in1d(y_pred[:k], y_true)
-    return np.sum(relevant * mask) / y_true[:k].shape[0]
+    y_true, y_pred = np.atleast_2d(y_true, y_pred)
+    y_true = y_true.T[:, :k]
+    y_pred = y_pred[:, :k]
+
+    relevant = (y_true == y_pred).any(-1) / y_true.shape[-1]
+    recalls = np.squeeze(relevant)
+    if not recalls.shape:
+        return recalls.item()
+    return recalls
 
 
 def rr(y_true, y_pred, k=20):
