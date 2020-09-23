@@ -32,14 +32,6 @@ def split(x):
 
 
 def recall(y_true, y_pred=None, ignore=None, k=20):
-    y_true = np.atleast_1d(y_true)
-    y_pred = y_pred[:k]
-    mask = ~(y_pred == ignore)
-    relevant = np.in1d(y_pred[:k], y_true)
-    return np.sum(relevant * mask) / y_true[:k].shape[0]
-
-
-def precall(y_true, y_pred=None, ignore=None, k=20):
     y_true, y_pred = np.atleast_2d(y_true, y_pred)
     y_true = y_true.T[:, :k]
     y_pred = y_pred[:, :k]
@@ -91,15 +83,10 @@ def main(path):
     with timer("Predict"):
         predicted = model.predict(ev_valid)
 
-    with timer("Calculate the measures"):
-        ev_valid["recall"] = [
-            recall(g, p) for g, p in zip(ev_valid["gold"], predicted)]
-
     with timer("Calculate the vectorized measures"):
-        ev_valid["precall"] = precall(ev_valid["gold"], predicted)
+        ev_valid["recall"] = recall(ev_valid["gold"], predicted)
 
-    print(ev_valid["precall"].mean() - ev_valid["precall"].mean())
-    # print(precall(1, [1, 2, 3, 4]))
+    print(ev_valid["recall"].mean())
 
 
 if __name__ == '__main__':
