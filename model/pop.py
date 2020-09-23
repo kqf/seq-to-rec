@@ -39,6 +39,18 @@ def recall(y_true, y_pred=None, ignore=None, k=20):
     return np.sum(relevant * mask) / y_true[:k].shape[0]
 
 
+def precall(y_true, y_pred=None, ignore=None, k=20):
+    y_true, y_pred = np.atleast_2d(y_true, y_pred)
+    y_true = y_true.T[:, :k]
+    y_pred = y_pred[:, :k]
+
+    relevant = (y_true == y_pred).any(-1) / y_true.shape[-1]
+    recalls = np.squeeze(relevant)
+    if not recalls.shape:
+        return recalls.item()
+    return recalls
+
+
 def ev_data(dataset):
     dataset = dataset[dataset.str.len() > 1].reset_index(drop=True)
     data = pd.DataFrame({"session_id": dataset.index})
@@ -83,7 +95,11 @@ def main(path):
         ev_valid["recall"] = [
             recall(g, p) for g, p in zip(ev_valid["gold"], predicted)]
 
-    print(ev_valid["recall"].mean())
+    with timer("Calculate the vectorized measures"):
+        ev_valid["precall"] = precall(ev_valid["gold"], predicted)
+
+    print(ev_valid["precall"].mean() - ev_valid["precall"].mean())
+    # print(precall(1, [1, 2, 3, 4]))
 
 
 if __name__ == '__main__':
