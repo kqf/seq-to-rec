@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.pipeline import make_pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
 from torchtext.data import Example, Dataset, Field, BucketIterator
+from irmetrics.topk import rr, recall
 
 
 def read_data(raw):
@@ -209,28 +210,6 @@ class SequenceIterator(BucketIterator):
 
 def ppx(model, X, y):
     return np.exp(model.history[-1]["train_loss"].item())
-
-
-def recall(y_true, y_pred=None, ignore=None, k=20):
-    y_true, y_pred = np.atleast_2d(y_true, y_pred)
-    y_true = y_true.T[:, :k]
-    y_pred = y_pred[:, :k]
-
-    relevant = (y_true == y_pred).any(-1) / y_true.shape[-1]
-    recalls = np.squeeze(relevant)
-    if not recalls.shape:
-        return recalls.item()
-    return recalls
-
-
-def rr(y_true, y_pred, k=20):
-    y_true, y_pred = np.atleast_2d(y_true, y_pred)
-    y_true = y_true.T[:, :k]
-    y_pred = y_pred[:, :k]
-
-    relevant = y_true == y_pred
-    index = relevant.argmax(-1)
-    return relevant.any(-1) / (index + 1)
 
 
 def scoring(model, X, y, at=20):

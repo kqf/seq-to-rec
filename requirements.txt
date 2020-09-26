@@ -9,3 +9,4 @@ torchtext
 torch
 skorch
 gpustat
+ir-metrics
