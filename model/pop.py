@@ -7,7 +7,7 @@ import itertools
 import numpy as np
 from contextlib import contextmanager
 from sklearn.base import BaseEstimator, TransformerMixin
-from irmetrics.topk import recall
+from irmetrics.topk import recall, rr
 
 
 @contextmanager
@@ -58,6 +58,22 @@ class PopEstimator(BaseEstimator, TransformerMixin):
         return np.stack(preds)
 
 
+def evaluate(model, data, title):
+    with timer("Prepare the evaluation"):
+        dataset = ev_data(data)
+
+    with timer("Predict"):
+        predicted = model.predict(dataset)
+
+    with timer("Calculate the vectorized measures"):
+        dataset["recall"] = recall(dataset["gold"], predicted)
+        dataset["rr"] = rr(dataset["gold"], predicted)
+
+    print("Evaluating on", title)
+    print("Recall", dataset["recall"].mean())
+    print("MRR", dataset["rr"].mean())
+
+
 @click.command()
 @click.option(
     "--path", type=click.Path(exists=True), default="data/processed/")
@@ -65,17 +81,8 @@ def main(path):
     train, test, valid = read_data(path)
     with timer("Fit the data"):
         model = PopEstimator().fit(train)
-
-    with timer("Prepare the evaluation"):
-        ev_valid = ev_data(valid)
-
-    with timer("Predict"):
-        predicted = model.predict(ev_valid)
-
-    with timer("Calculate the vectorized measures"):
-        ev_valid["recall"] = recall(ev_valid["gold"], predicted)
-
-    print(ev_valid["recall"].mean())
+    evaluate(model, valid, "validatoin")
+    evaluate(model, test, "test")
 
 
 if __name__ == '__main__':
