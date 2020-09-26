@@ -5,8 +5,9 @@ import pandas as pd
 import itertools
 
 import numpy as np
-from sklearn.base import BaseEstimator, TransformerMixin
 from contextlib import contextmanager
+from sklearn.base import BaseEstimator, TransformerMixin
+from irmetrics.topk import recall
 
 
 @contextmanager
@@ -29,18 +30,6 @@ def read_data(raw):
 
 def split(x):
     return [(x[:i + 1], x[i + 1]) for i in range(len(x) - 1)]
-
-
-def recall(y_true, y_pred=None, ignore=None, k=20):
-    y_true, y_pred = np.atleast_2d(y_true, y_pred)
-    y_true = y_true.T[:, :k]
-    y_pred = y_pred[:, :k]
-
-    relevant = (y_true == y_pred).any(-1) / y_true.shape[-1]
-    recalls = np.squeeze(relevant)
-    if not recalls.shape:
-        return recalls.item()
-    return recalls
 
 
 def ev_data(dataset):
