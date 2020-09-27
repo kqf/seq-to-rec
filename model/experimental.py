@@ -55,7 +55,7 @@ class DynamicVariablesSetter(skorch.callbacks.Callback):
     def on_train_begin(self, net, X, y):
         vocab = X.fields["text"].vocab
         net.set_params(module__vocab_size=len(vocab))
-        # net.set_params(criterion__ignore_index=vocab["<pad>"])
+        net.set_params(criterion__ignore_index=vocab["<pad>"])
 
         n_pars = self.count_parameters(net.module_)
         print(f'The model has {n_pars:,} trainable parameters')
@@ -247,13 +247,13 @@ def build_model():
         module=RecurrentCollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         module__emb_dim=100,
-        module__hidden_dim=128,
+        module__hidden_dim=100,
         optimizer=torch.optim.Adam,
         optimizer__lr=0.001,
         criterion=FlattenCrossEntropy,
         # criterion=SampledCriterion,
         # criterion__criterion=Top1Loss(),
-        max_epochs=10,
+        max_epochs=50,
         batch_size=64,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
@@ -265,7 +265,7 @@ def build_model():
         train_split=None,
         device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         callbacks=[
-            skorch.callbacks.GradientNormClipping(1.),
+            # skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
             skorch.callbacks.EpochScoring(
                 ppx,
