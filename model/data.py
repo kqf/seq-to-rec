@@ -6,6 +6,20 @@ import numpy as np
 import pandas as pd
 
 
+def split(x):
+    return [(x[:i + 1], x[i + 1]) for i in range(len(x) - 1)]
+
+
+def ev_data(dataset):
+    dataset = dataset[dataset.str.len() > 1].reset_index(drop=True)
+    data = pd.DataFrame({"session_id": dataset.index})
+    data["splitted"] = dataset.apply(split)
+    exploded = data.explode("splitted")
+    exploded["observed"] = exploded["splitted"].str[0]
+    exploded["gold"] = exploded["splitted"].str[1]
+    return exploded.drop(columns=["splitted"])
+
+
 def report(df, msg):
     n_items = len(df["item_id"].unique())
     n_sessions = len(df["session_id"].unique())
