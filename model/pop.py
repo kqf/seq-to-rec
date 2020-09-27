@@ -10,6 +10,9 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from irmetrics.topk import recall, rr
 
 
+from model.data import ev_data
+
+
 @contextmanager
 def timer(name):
     t0 = time.time()
@@ -26,20 +29,6 @@ def read_data(raw):
         pd.read_csv(path / 'valid.txt', names=["text"])["text"].str.split(),
         pd.read_csv(path / 'test.txt', names=["text"])["text"].str.split(),
     )
-
-
-def split(x):
-    return [(x[:i + 1], x[i + 1]) for i in range(len(x) - 1)]
-
-
-def ev_data(dataset):
-    dataset = dataset[dataset.str.len() > 1].reset_index(drop=True)
-    data = pd.DataFrame({"session_id": dataset.index})
-    data["splitted"] = dataset.apply(split)
-    exploded = data.explode("splitted")
-    exploded["observed"] = exploded["splitted"].str[0]
-    exploded["gold"] = exploded["splitted"].str[1]
-    return exploded.drop(columns=["splitted"])
 
 
 class PopEstimator(BaseEstimator, TransformerMixin):
