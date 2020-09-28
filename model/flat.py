@@ -84,39 +84,6 @@ class RecurrentCollaborativeModel(torch.nn.Module):
         return self._out(lstm_out)
 
 
-
-ef batch_diagonal_idx(x):
-    return torch.arange(x.shape[-1]).repeat(x.shape[0] // x.shape[-1])
-
-
-def batch_diagonal(x):
-    return x[:, batch_diagonal_idx(x)].diag()
-
-
-class BPRLoss(torch.nn.Module):
-    def forward(self, logits):
-        diag = batch_diagonal(logits)
-        diff = diag.view(-1, 1) - logits
-        losses = torch.nn.functional.logsigmoid(diff).mean(dim=-1)
-        return -losses.mean()
-
-
-class Top1Loss(torch.nn.Module):
-    def forward(self, logits):
-        diag = batch_diagonal(logits).view(-1, 1)
-        diff = diag.view(-1, 1) - logits
-        losses = (
-            torch.nn.functional.sigmoid(-diff) +  # noqa
-            torch.nn.functional.sigmoid(logits ** 2)).mean(dim=-1)
-        return -losses.mean()
-
-
-class UnsupervisedCrossEntropy(torch.nn.CrossEntropyLoss):
-    def forward(self, logits):
-        # Assuming the logits is square matrics, with true answers on diagonal
-        return super().forward(logits, batch_diagonal_idx(logits))
-
-
 class SeqNet(skorch.NeuralNet):
     def get_loss(self, y_pred, y_true, X=None, training=False):
         logits = y_pred[:, :-1, :].permute(1, 0, 2)
