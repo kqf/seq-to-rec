@@ -15,7 +15,7 @@ def ev_data(dataset):
     data = pd.DataFrame({"session_id": dataset.index})
     data["splitted"] = dataset.apply(split)
     exploded = data.explode("splitted")
-    exploded["observed"] = exploded["splitted"].str[0]
+    exploded["text"] = exploded["splitted"].str[0]
     exploded["gold"] = exploded["splitted"].str[1]
     return exploded.drop(columns=["splitted"])
 

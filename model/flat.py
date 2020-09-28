@@ -80,15 +80,16 @@ class RecurrentCollaborativeModel(torch.nn.Module):
 
     def forward(self, inputs, hidden=None):
         embedded = self._emb(inputs)
-        lstm_out, hidden = self._rnn(embedded, hidden)
-        return self._out(lstm_out)
+        out, hidden = self._rnn(embedded, hidden)
+        return self._out(out)[:, -1, :]
 
 
 class SeqNet(skorch.NeuralNet):
-    def get_loss(self, y_pred, y_true, X=None, training=False):
-        logits = y_pred[:, :-1, :].permute(1, 0, 2)
-        targets = X[:, 1:].T
-        return self.criterion_(logits, targets.to(logits.device))
+    # def get_loss(self, y_pred, y_true, X=None, training=False):
+    #     import ipdb; ipdb.set_trace(); import IPython; IPython.embed() # noqa
+    #     logits = y_pred[:, :-1, :].permute(1, 0, 2)
+    #     targets = X[:, 1:].T
+    #     return self.criterion_(logits, targets.to(logits.device))
 
     def predict(self, X):
         probas = self.predict_proba(X)
@@ -106,10 +107,11 @@ def build_preprocessor(min_freq=5):
             tokenize=tokenize,
             init_token=None,
             eos_token=None,
-            batch_first=True
+            batch_first=True,
+            pad_first=True,
         )
         fields = [
-            ('observed', text_field),
+            ('text', text_field),
             ('gold', text_field),
         ]
         return TextPreprocessor(fields, min_freq=min_freq)
@@ -123,7 +125,7 @@ class SequenceIterator(BucketIterator):
     def __iter__(self):
         with warnings.catch_warnings(record=True):
             for batch in super().__iter__():
-                yield batch.observed, batch.gold
+                yield batch.text, batch.gold.view(-1)
 
 
 def ppx(model, X, y):
@@ -201,7 +203,7 @@ def evaluate(model, data, title):
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
-    model = build_model().fit(train)
+    model = build_model().fit(ev_data(train["text"]))
 
     model[-1].set_params(batch_size=32)
     evaluate(model, train.sample(frac=0.015), "train")
