@@ -1,7 +1,7 @@
 import pytest
 import pandas as pd
 
-from model.model import build_preprocessor, build_model
+from model.experimental import build_preprocessor, build_model
 from torchtext.data import BucketIterator
 
 
