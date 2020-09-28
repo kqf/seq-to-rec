@@ -84,46 +84,8 @@ class RecurrentCollaborativeModel(torch.nn.Module):
         return self._out(lstm_out)
 
 
-class CollaborativeModel(torch.nn.Module):
-    def __init__(self, vocab_size, emb_dim=100, hidden_dim=128):
-        super().__init__()
-        self._emb = torch.nn.Embedding(vocab_size, emb_dim)
-        self._fc0 = torch.nn.Linear(emb_dim, hidden_dim)
-        self._out = torch.nn.Linear(hidden_dim, vocab_size)
 
-    def forward(self, inputs, hidden=None):
-        embedded = self._emb(inputs)
-
-        # average over seq dimension
-        n = torch.arange(embedded.shape[1], device=embedded.device) + 1
-        cmean = torch.cumsum(embedded, dim=1) / n[None, :, None]
-
-        hidden = self._fc0(cmean)
-        return self._out(hidden)
-
-
-class SampledCriterion(torch.nn.Module):
-    def __init__(self, criterion):
-        super().__init__()
-        self.criterion = criterion
-
-    def forward(self, logits, targets):
-        batch_size = targets.shape[-1]
-        y = targets.repeat(1, batch_size).view(-1, batch_size)
-        logits = logits.reshape(-1, logits.shape[-1])
-        return self.criterion(torch.take(logits, y))
-
-
-class FlattenCrossEntropy(torch.nn.CrossEntropyLoss):
-    def forward(self, logits, targets):
-        n_outputs = logits.shape[-1]
-        return super().forward(
-            logits.reshape(-1, n_outputs),
-            targets.reshape(-1)
-        )
-
-
-def batch_diagonal_idx(x):
+ef batch_diagonal_idx(x):
     return torch.arange(x.shape[-1]).repeat(x.shape[0] // x.shape[-1])
 
 
@@ -216,9 +178,7 @@ def build_model():
         module__hidden_dim=100,
         optimizer=torch.optim.Adam,
         optimizer__lr=0.001,
-        criterion=FlattenCrossEntropy,
-        # criterion=SampledCriterion,
-        # criterion__criterion=Top1Loss(),
+        criterion=torch.nn.CrossEntropyLoss,
         max_epochs=50,
         batch_size=64,
         iterator_train=SequenceIterator,
