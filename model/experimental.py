@@ -180,8 +180,7 @@ def build_preprocessor(min_freq=5):
             batch_first=True
         )
         fields = [
-            ('observed', text_field),
-            ('gold', text_field),
+            ('text', text_field),
         ]
         return TextPreprocessor(fields, min_freq=min_freq)
 
@@ -194,7 +193,7 @@ class SequenceIterator(BucketIterator):
     def __iter__(self):
         with warnings.catch_warnings(record=True):
             for batch in super().__iter__():
-                yield batch.observed, batch.gold
+                yield batch.text, batch.text
 
 
 def ppx(model, X, y):
@@ -219,7 +218,7 @@ def build_model():
         criterion=FlattenCrossEntropy,
         # criterion=SampledCriterion,
         # criterion__criterion=Top1Loss(),
-        max_epochs=50,
+        max_epochs=2,
         batch_size=64,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
@@ -258,7 +257,7 @@ def build_model():
 
 def evaluate(model, data, title):
     dataset = ev_data(data["text"].str.split())
-    dataset["text"] = dataset["observed"]
+    dataset["text"] = dataset["text"]
 
     predicted = model.predict(dataset)
     dataset["recall"] = recall(dataset["gold"], predicted)

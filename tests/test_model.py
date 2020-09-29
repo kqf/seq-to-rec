@@ -21,7 +21,7 @@ def test_data(data, batch_size=32):
 
 def test_model(data):
     model = build_model().fit(data)
-    model.predict(data)
+    preds = model.predict(data)
 
-    preds, labels = model.transform(data)
-    assert preds.shape[0] == labels.shape[0]
+    # Predict multiple labels
+    assert len(preds.shape) == 3
