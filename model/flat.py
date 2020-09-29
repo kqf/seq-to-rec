@@ -145,11 +145,12 @@ def build_model():
         module__vocab_size=100,  # Dummy dimension
         module__emb_dim=100,
         module__hidden_dim=100,
+        module__active=torch.nn.Sigmoid(),
         optimizer=torch.optim.Adam,
         optimizer__lr=0.001,
         criterion=torch.nn.CrossEntropyLoss,
-        max_epochs=50,
-        batch_size=64,
+        max_epochs=10,
+        batch_size=512,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
@@ -160,7 +161,7 @@ def build_model():
         train_split=None,
         device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         callbacks=[
-            # skorch.callbacks.GradientNormClipping(1.),
+            skorch.callbacks.GradientNormClipping(150.),  # Original paper
             DynamicVariablesSetter(),
             skorch.callbacks.EpochScoring(
                 ppx,
