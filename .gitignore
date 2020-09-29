@@ -1,6 +1,7 @@
 # Python
 .python-version
 *.pyc
+*.egg*
 
 # Data
 data/
