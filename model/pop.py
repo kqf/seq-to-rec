@@ -1,6 +1,4 @@
 import click
-import pathlib
-import pandas as pd
 import itertools
 
 import numpy as np
@@ -10,17 +8,8 @@ from sklearn.pipeline import make_pipeline
 from irmetrics.topk import recall, rr
 
 
-from model.data import ev_data
+from model.data import ev_data, read_data
 from model.timer import timer
-
-
-def read_data(raw):
-    path = pathlib.Path(raw)
-    return (
-        pd.read_csv(path / 'train.txt', names=["text"]),
-        pd.read_csv(path / 'valid.txt', names=["text"]),
-        pd.read_csv(path / 'test.txt', names=["text"]),
-    )
 
 
 class SplitSelector(BaseEstimator, TransformerMixin):

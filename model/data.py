@@ -10,6 +10,15 @@ def split(x):
     return [(x[:i + 1], x[i + 1]) for i in range(len(x) - 1)]
 
 
+def read_data(raw):
+    path = pathlib.Path(raw)
+    return (
+        pd.read_csv(path / 'train.txt', names=["text"]),
+        pd.read_csv(path / 'test.txt', names=["text"]),
+        pd.read_csv(path / 'valid.txt', names=["text"]),
+    )
+
+
 def ev_data(dataset):
     dataset = dataset[dataset.str.len() > 1].reset_index(drop=True)
     data = pd.DataFrame({"session_id": dataset.index})

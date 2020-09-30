@@ -2,11 +2,9 @@ import click
 import torch
 import skorch
 import random
-import pathlib
 import warnings
 
 import numpy as np
-import pandas as pd
 
 from sklearn.pipeline import make_pipeline
 from torchtext.data import Field, BucketIterator
@@ -14,7 +12,7 @@ from torchtext.dataset import TextPreprocessor
 
 from irmetrics.topk import rr, recall
 
-from model.data import ev_data
+from model.data import ev_data, read_data
 
 SEED = 137
 random.seed(SEED)
@@ -22,15 +20,6 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
-
-
-def read_data(raw):
-    path = pathlib.Path(raw)
-    return (
-        pd.read_csv(path / 'train.txt', names=["text"]),
-        pd.read_csv(path / 'test.txt', names=["text"]),
-        pd.read_csv(path / 'valid.txt', names=["text"]),
-    )
 
 
 class DynamicVariablesSetter(skorch.callbacks.Callback):
