@@ -1,4 +1,3 @@
-import time
 import click
 import pathlib
 import pandas as pd
@@ -61,6 +60,7 @@ def main(path):
     train, test, valid = read_data(path)
     with timer("Fit the data"):
         model = PopEstimator().fit(train)
+
     evaluate(model, valid, "validatoin")
     evaluate(model, test, "test")
 
