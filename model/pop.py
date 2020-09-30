@@ -5,21 +5,12 @@ import pandas as pd
 import itertools
 
 import numpy as np
-from contextlib import contextmanager
 from sklearn.base import BaseEstimator, TransformerMixin
 from irmetrics.topk import recall, rr
 
 
 from model.data import ev_data
-
-
-@contextmanager
-def timer(name):
-    t0 = time.time()
-    yield
-    print("{color}[{name}] done in {et:.0f} s{nocolor}".format(
-        name=name, et=time.time() - t0,
-        color='\033[1;33m', nocolor='\033[0m'))
+from model.timer import timer
 
 
 def read_data(raw):
