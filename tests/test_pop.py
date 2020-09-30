@@ -1,7 +1,7 @@
-from model.pop import PopEstimator
+from model.pop import build_model
 
 
 def test_model(data):
-    model = PopEstimator().fit(data["text"].str.split())
+    model = build_model().fit(data)
     preds = model.predict(data)
     assert preds.shape[0] == data["text"].shape[0]

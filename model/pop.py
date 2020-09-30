@@ -5,6 +5,8 @@ import itertools
 
 import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.pipeline import make_pipeline
+
 from irmetrics.topk import recall, rr
 
 
@@ -15,10 +17,21 @@ from model.timer import timer
 def read_data(raw):
     path = pathlib.Path(raw)
     return (
-        pd.read_csv(path / 'train.txt', names=["text"])["text"].str.split(),
-        pd.read_csv(path / 'valid.txt', names=["text"])["text"].str.split(),
-        pd.read_csv(path / 'test.txt', names=["text"])["text"].str.split(),
+        pd.read_csv(path / 'train.txt', names=["text"]),
+        pd.read_csv(path / 'valid.txt', names=["text"]),
+        pd.read_csv(path / 'test.txt', names=["text"]),
     )
+
+
+class SplitSelector(BaseEstimator, TransformerMixin):
+    def __init__(self, col):
+        self.col = col
+
+    def transform(self, X):
+        return X[self.col].str.split()
+
+    def fit(self, X, y=None):
+        return self
 
 
 class PopEstimator(BaseEstimator, TransformerMixin):
@@ -35,6 +48,14 @@ class PopEstimator(BaseEstimator, TransformerMixin):
     def predict(self, X):
         preds = list(itertools.repeat(self.popualar_, len(X)))
         return np.stack(preds)
+
+
+def build_model(col="text"):
+    model = make_pipeline(
+        SplitSelector(col=col),
+        PopEstimator(),
+    )
+    return model
 
 
 def evaluate(model, data, title):
@@ -58,8 +79,9 @@ def evaluate(model, data, title):
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
+
     with timer("Fit the data"):
-        model = PopEstimator().fit(train)
+        model = build_model().fit()
 
     evaluate(model, valid, "validatoin")
     evaluate(model, test, "test")
