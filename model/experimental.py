@@ -134,7 +134,7 @@ class SeqNet(skorch.NeuralNet):
 
     def predict(self, X):
         probas = self.predict_proba(X)
-        indexes = (-probas).argsort(-1)[:, :25]
+        indexes = (-probas).argsort(-1)[:, :20]
         return np.take(X.fields["text"].vocab.itos, indexes)
 
 
@@ -211,7 +211,7 @@ def build_model():
             ),
             # skorch.callbacks.EpochScoring(
             #     recall_scoring,
-            #     name="recall@25",
+            #     name="recall@20",
             #     on_train=True,
             #     use_caching=False
             # ),
