@@ -5,11 +5,9 @@ import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import make_pipeline
 
-from irmetrics.topk import recall, rr
-
-
-from model.data import ev_data, read_data
 from model.timer import timer
+from model.data import read_data
+from model.evaluation import evaluate
 
 
 class SplitSelector(BaseEstimator, TransformerMixin):
@@ -47,22 +45,6 @@ def build_model(col="text"):
     return model
 
 
-def evaluate(model, data, title):
-    with timer("Prepare the evaluation"):
-        dataset = ev_data(data)
-
-    with timer("Predict"):
-        predicted = model.predict(dataset)
-
-    with timer("Calculate the vectorized measures"):
-        dataset["recall"] = recall(dataset["gold"], predicted)
-        dataset["rr"] = rr(dataset["gold"], predicted)
-
-    print("Evaluating on", title)
-    print("Recall", dataset["recall"].mean())
-    print("MRR", dataset["rr"].mean())
-
-
 @click.command()
 @click.option(
     "--path", type=click.Path(exists=True), default="data/processed/")
@@ -70,7 +52,7 @@ def main(path):
     train, test, valid = read_data(path)
 
     with timer("Fit the data"):
-        model = build_model().fit()
+        model = build_model().fit(train)
 
     evaluate(model, valid, "validatoin")
     evaluate(model, test, "test")

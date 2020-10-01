@@ -8,10 +8,11 @@ import numpy as np
 
 from sklearn.pipeline import make_pipeline
 from torchtext.data import Field, BucketIterator
-from irmetrics.topk import rr, recall
+from irmetrics.topk import recall
 
 from model.data import ev_data, read_data
 from model.dataset import TextPreprocessor
+from model.evaluation import evaluate
 
 SEED = 137
 random.seed(SEED)
@@ -223,19 +224,6 @@ def build_model():
         model,
     )
     return full
-
-
-def evaluate(model, data, title):
-    dataset = ev_data(data["text"].str.split())
-    dataset["text"] = dataset["text"]
-
-    predicted = model.predict(dataset)
-    dataset["recall"] = recall(dataset["gold"], predicted)
-    dataset["rr"] = rr(dataset["gold"], predicted)
-
-    print("Evaluating on", title)
-    print("Recall", dataset["recall"].mean())
-    print("MRR", dataset["rr"].mean())
 
 
 @click.command()
