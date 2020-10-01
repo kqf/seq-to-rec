@@ -54,8 +54,8 @@ def main(path):
     with timer("Fit the data"):
         model = build_model().fit(train)
 
-    evaluate(model, ev_data(valid["text"]), "validatoin")
-    evaluate(model, ev_data(test["text"]), "test")
+    evaluate(model, valid, "validatoin")
+    evaluate(model, test, "test")
 
 
 if __name__ == '__main__':

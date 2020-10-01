@@ -1,9 +1,12 @@
 from irmetrics.topk import recall, rr
 
 from model.timer import timer
+from model.data import ev_data
 
 
-def evaluate(model, data, title):
+def evaluate(model, dataset, title):
+    data = ev_data(dataset["text"])
+
     with timer("Predict"):
         predicted = model.predict(data)
 
