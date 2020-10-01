@@ -177,6 +177,11 @@ def recall_scoring(model, X, y):
     return np.mean(recall(dataset["gold"], predicted))
 
 
+def inference(logits, k=20):
+    probas = torch.softmax(logits[:, -1, :], dim=-1)
+    return (-probas).argsort(-1)[:, :k].clone().detach()
+
+
 def build_model():
     preprocessor = build_preprocessor(min_freq=1)
     model = SeqNet(
@@ -200,6 +205,7 @@ def build_model():
         iterator_valid__sort=False,
         train_split=None,
         device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+        predict_nonlinearity=inference,  # apply only at inference step
         callbacks=[
             # skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
