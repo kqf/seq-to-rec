@@ -6,7 +6,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.pipeline import make_pipeline
 
 from model.timer import timer
-from model.data import read_data, ev_data
+from model.data import read_data
 from model.evaluation import evaluate
 
 
