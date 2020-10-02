@@ -20,6 +20,9 @@ def read_data(raw):
 
 
 def ev_data(dataset):
+    # Ensure list of strings
+    dataset = dataset.str.split()
+
     dataset = dataset[dataset.str.len() > 1].reset_index(drop=True)
     data = pd.DataFrame({"session_id": dataset.index})
     data["splitted"] = dataset.apply(split)
