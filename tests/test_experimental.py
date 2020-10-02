@@ -14,4 +14,4 @@ def test_model(data):
     preds = model.predict(data)
 
     # Predict multiple labels
-    assert len(preds.shape) == 3
+    assert len(preds.shape) == 2
