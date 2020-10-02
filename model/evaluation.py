@@ -5,7 +5,7 @@ from model.data import ev_data
 
 
 def evaluate(model, dataset, title):
-    data = ev_data(dataset["text"])
+    data = ev_data(dataset["text"].str.split())
 
     with timer("Predict"):
         predicted = model.predict(data)
