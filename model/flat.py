@@ -6,6 +6,7 @@ import warnings
 
 import numpy as np
 
+from functools import partial
 from sklearn.pipeline import make_pipeline
 from torchtext.data import Field, BucketIterator
 
@@ -57,15 +58,9 @@ class RecurrentCollaborativeModel(torch.nn.Module):
 
 
 class SeqNet(skorch.NeuralNet):
-    # def get_loss(self, y_pred, y_true, X=None, training=False):
-    #     import ipdb; ipdb.set_trace(); import IPython; IPython.embed() # noqa
-    #     logits = y_pred[:, :-1, :].permute(1, 0, 2)
-    #     targets = X[:, 1:].T
-    #     return self.criterion_(logits, targets.to(logits.device))
-
     def predict(self, X):
-        probas = self.predict_proba(X)
-        indexes = (-probas).argsort(-1)[:, :20]
+        # Now predict_proba returns top k indexes
+        indexes = self.predict_proba(X)
         return np.take(X.fields["text"].vocab.itos, indexes)
 
 
@@ -110,18 +105,24 @@ def recall_scoring(model, X, y):
     return np.mean(recall(dataset["gold"], predicted))
 
 
+def inference(logits, k, device):
+    probas = torch.softmax(logits.to(device), dim=-1)
+    return (-probas).argsort(-1)[:, :k].clone().detach()
+
+
 def build_model():
     preprocessor = build_preprocessor(min_freq=1)
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = SeqNet(
         module=RecurrentCollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         module__emb_dim=100,
         module__hidden_dim=100,
         optimizer=torch.optim.Adam,
-        optimizer__lr=0.001,
+        optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
         max_epochs=1,
-        batch_size=512,
+        batch_size=128,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
@@ -130,16 +131,17 @@ def build_model():
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=None,
-        device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+        device=device,
+        predict_nonlinearity=partial(inference, k=20, device=device),
         callbacks=[
-            skorch.callbacks.GradientNormClipping(150.),  # Original paper
+            skorch.callbacks.GradientNormClipping(1.),  # Original paper
             DynamicVariablesSetter(),
-            skorch.callbacks.EpochScoring(
-                ppx,
-                name="train_perplexity",
-                on_train=True,
-                use_caching=False,
-            ),
+            # skorch.callbacks.EpochScoring(
+            #     ppx,
+            #     name="train_perplexity",
+            #     on_train=True,
+            #     use_caching=False,
+            # ),
             # skorch.callbacks.EpochScoring(
             #     recall_scoring,
             #     name="recall@20",
@@ -162,11 +164,15 @@ def build_model():
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
-    model = build_model().fit(ev_data(train["text"]))
+    data = ev_data(train["text"])
+
+    print(data)
+    model = build_model().fit(data)
 
     model[-1].set_params(batch_size=32)
-    evaluate(model, train.sample(frac=0.015), "train")
-    evaluate(model, valid.sample(frac=0.1), "valid")
+
+    evaluate(model, test.sample(frac=0.1), "test")
+    evaluate(model, train, "train")
 
 
 if __name__ == '__main__':
