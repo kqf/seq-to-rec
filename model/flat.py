@@ -105,7 +105,7 @@ def ppx(model, X, y):
 
 
 def recall_scoring(model, X, y):
-    dataset = ev_data(X.sample(frac=0.01)["text"].str.split())
+    dataset = ev_data(X.sample(frac=0.01)["text"])
     predicted = model.predict(dataset)
     return np.mean(recall(dataset["gold"], predicted))
 
