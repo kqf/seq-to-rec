@@ -134,7 +134,7 @@ class SeqNet(skorch.NeuralNet):
 
     def predict(self, X):
         probas = self.predict_proba(X)
-        indexes = (-probas).argsort(-1)[:, :25]
+        indexes = (-probas).argsort(-1)[:, :20]
         return np.take(X.fields["text"].vocab.itos, indexes)
 
 
@@ -177,6 +177,11 @@ def recall_scoring(model, X, y):
     return np.mean(recall(dataset["gold"], predicted))
 
 
+def inference(logits, k=20):
+    probas = torch.softmax(logits[:, -1, :], dim=-1)
+    return (-probas).argsort(-1)[:, :k].clone().detach()
+
+
 def build_model():
     preprocessor = build_preprocessor(min_freq=1)
     model = SeqNet(
@@ -200,6 +205,7 @@ def build_model():
         iterator_valid__sort=False,
         train_split=None,
         device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
+        predict_nonlinearity=inference,  # apply only at inference step
         callbacks=[
             # skorch.callbacks.GradientNormClipping(1.),
             DynamicVariablesSetter(),
@@ -211,7 +217,7 @@ def build_model():
             ),
             # skorch.callbacks.EpochScoring(
             #     recall_scoring,
-            #     name="recall@25",
+            #     name="recall@20",
             #     on_train=True,
             #     use_caching=False
             # ),
