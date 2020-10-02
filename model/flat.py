@@ -121,7 +121,7 @@ def build_model():
         optimizer__lr=0.001,
         criterion=torch.nn.CrossEntropyLoss,
         max_epochs=1,
-        batch_size=512,
+        batch_size=64,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
@@ -132,14 +132,14 @@ def build_model():
         train_split=None,
         device=torch.device("cuda:0" if torch.cuda.is_available() else "cpu"),
         callbacks=[
-            skorch.callbacks.GradientNormClipping(150.),  # Original paper
+            skorch.callbacks.GradientNormClipping(1.),  # Original paper
             DynamicVariablesSetter(),
-            skorch.callbacks.EpochScoring(
-                ppx,
-                name="train_perplexity",
-                on_train=True,
-                use_caching=False,
-            ),
+            # skorch.callbacks.EpochScoring(
+            #     ppx,
+            #     name="train_perplexity",
+            #     on_train=True,
+            #     use_caching=False,
+            # ),
             # skorch.callbacks.EpochScoring(
             #     recall_scoring,
             #     name="recall@20",
@@ -162,7 +162,10 @@ def build_model():
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
-    model = build_model().fit(ev_data(train["text"]))
+    data = ev_data(train["text"])
+
+    print(data)
+    model = build_model().fit(data)
 
     model[-1].set_params(batch_size=32)
     evaluate(model, train.sample(frac=0.015), "train")
