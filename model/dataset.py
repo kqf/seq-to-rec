@@ -20,3 +20,9 @@ class TextPreprocessor(BaseEstimator, TransformerMixin):
             proc = [X[col].apply(f.preprocess) for col, f in self.fields]
             examples = [Example.fromlist(f, self.fields) for f in zip(*proc)]
             return Dataset(examples, self.fields)
+
+
+def train_split(X, prep, X_val):
+    if X_val is None:
+        return Dataset.split(X)
+    return X, prep.transform(X_val)

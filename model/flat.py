@@ -13,7 +13,7 @@ from torchtext.data import Field, BucketIterator
 from irmetrics.topk import recall
 
 from model.data import ev_data, read_data
-from model.dataset import TextPreprocessor
+from model.dataset import TextPreprocessor, train_split
 from model.evaluation import evaluate
 
 SEED = 137
@@ -111,7 +111,7 @@ def inference(logits, k, device):
     return torch.topk(probas, k=k, dim=-1)[-1].clone().detach()
 
 
-def build_model(k=20):
+def build_model(X_val=None, k=20):
     preprocessor = build_preprocessor(min_freq=1)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = SeqNet(
@@ -131,7 +131,7 @@ def build_model(k=20):
         iterator_valid=SequenceIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
-        train_split=None,
+        train_split=partial(train_split, prep=preprocessor, X_val=X_val),
         device=device,
         predict_nonlinearity=partial(inference, k=k, device=device),
         callbacks=[
