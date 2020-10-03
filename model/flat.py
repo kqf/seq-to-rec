@@ -107,10 +107,11 @@ def recall_scoring(model, X, y):
 
 def inference(logits, k, device):
     probas = torch.softmax(logits.to(device), dim=-1)
-    return (-probas).argsort(-1)[:, :k].clone().detach()
+    # Return only indices
+    return torch.topk(probas, k=k, dim=-1)[-1].clone().detach()
 
 
-def build_model():
+def build_model(k=20):
     preprocessor = build_preprocessor(min_freq=1)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = SeqNet(
@@ -132,7 +133,7 @@ def build_model():
         iterator_valid__sort=False,
         train_split=None,
         device=device,
-        predict_nonlinearity=partial(inference, k=20, device=device),
+        predict_nonlinearity=partial(inference, k=k, device=device),
         callbacks=[
             skorch.callbacks.GradientNormClipping(1.),  # Original paper
             DynamicVariablesSetter(),

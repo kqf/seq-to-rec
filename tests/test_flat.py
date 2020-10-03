@@ -10,7 +10,7 @@ def test_data(flat_data, batch_size=32):
 
 
 def test_model(flat_data):
-    model = build_model().fit(flat_data)
+    model = build_model(k=2).fit(flat_data)
     preds = model.predict(flat_data)
 
     # Predict only next item labels
