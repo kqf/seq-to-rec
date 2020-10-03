@@ -64,14 +64,10 @@ class SeqNet(skorch.NeuralNet):
         return np.take(X.fields["text"].vocab.itos, indexes)
 
 
-def tokenize(x):
-    return x.split()
-
-
 def build_preprocessor(min_freq=5):
     with warnings.catch_warnings(record=True):
         text_field = Field(
-            tokenize=tokenize,
+            tokenize=None,
             init_token=None,
             eos_token=None,
             batch_first=True,
@@ -93,10 +89,6 @@ class SequenceIterator(BucketIterator):
         with warnings.catch_warnings(record=True):
             for batch in super().__iter__():
                 yield batch.text, batch.gold.view(-1)
-
-
-def ppx(model, X, y):
-    return np.exp(model.history[-1]["train_loss"].item())
 
 
 def recall_scoring(model, X, y):
