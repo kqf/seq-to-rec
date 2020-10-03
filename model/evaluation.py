@@ -1,3 +1,5 @@
+import numpy as np
+
 from irmetrics.topk import recall, rr
 
 from model.timer import timer
@@ -18,3 +20,12 @@ def evaluate(model, dataset, title):
     print("Recall", data["recall"].mean())
     print("MRR", data["rr"].mean())
     return data
+
+
+def scoring(model, X, y, k, func):
+    return func(y, model.predict_proba(X), k)
+
+
+def ppx(model, X, y, entry="train_loss"):
+    loss = model.history[-1, entry]
+    return np.exp(-loss.item())

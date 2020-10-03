@@ -12,7 +12,7 @@ from irmetrics.topk import recall
 
 from model.data import ev_data, read_data
 from model.dataset import TextPreprocessor
-from model.evaluation import evaluate
+from model.evaluation import evaluate, ppx
 
 SEED = 137
 random.seed(SEED)
@@ -165,10 +165,6 @@ class SequenceIterator(BucketIterator):
         with warnings.catch_warnings(record=True):
             for batch in super().__iter__():
                 yield batch.text, batch.text
-
-
-def ppx(model, X, y):
-    return np.exp(model.history[-1]["train_loss"].item())
 
 
 def recall_scoring(model, X, y):

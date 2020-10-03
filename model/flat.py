@@ -14,7 +14,7 @@ from irmetrics.topk import recall
 
 from model.data import ev_data, read_data
 from model.dataset import TextPreprocessor, train_split
-from model.evaluation import evaluate
+from model.evaluation import evaluate, ppx
 
 SEED = 137
 random.seed(SEED)
@@ -91,12 +91,6 @@ class SequenceIterator(BucketIterator):
                 yield batch.text, batch.gold.view(-1)
 
 
-def recall_scoring(model, X, y):
-    dataset = ev_data(X.sample(frac=0.01)["text"])
-    predicted = model.predict(dataset)
-    return np.mean(recall(dataset["gold"], predicted))
-
-
 def inference(logits, k, device):
     probas = torch.softmax(logits.to(device), dim=-1)
     # Return only indices
@@ -129,16 +123,17 @@ def build_model(X_val=None, k=20):
         callbacks=[
             skorch.callbacks.GradientNormClipping(1.),  # Original paper
             DynamicVariablesSetter(),
-            # skorch.callbacks.EpochScoring(
-            #     ppx,
-            #     name="train_perplexity",
-            #     on_train=True,
-            #     use_caching=False,
-            # ),
+            skorch.callbacks.EpochScoring(
+                partial(ppx, entry="valid_loss"),
+                name="perplexity",
+                use_caching=False,
+                lower_is_better=False,
+            ),
             # skorch.callbacks.EpochScoring(
             #     recall_scoring,
             #     name="recall@20",
             #     on_train=True,
+            #     lower_is_better=False,
             #     use_caching=False
             # ),
             skorch.callbacks.ProgressBar('count'),
