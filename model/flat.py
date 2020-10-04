@@ -28,6 +28,8 @@ class DynamicVariablesSetter(skorch.callbacks.Callback):
     def on_train_begin(self, net, X, y):
         vocab = X.fields["text"].vocab
         net.set_params(module__vocab_size=len(vocab))
+        net.set_params(module__pad_idx=vocab["<pad>"])
+        net.set_params(module__unk_idx=vocab["<unk>"])
         net.set_params(criterion__ignore_index=vocab["<pad>"])
 
         n_pars = self.count_parameters(net.module_)
@@ -40,9 +42,11 @@ class DynamicVariablesSetter(skorch.callbacks.Callback):
 
 
 class RecurrentCollaborativeModel(torch.nn.Module):
-    def __init__(self, vocab_size, emb_dim=100, hidden_dim=128):
+    def __init__(self, vocab_size, emb_dim=100, hidden_dim=128,
+                 pad_idx=0, unk_idx=1):
         super().__init__()
-        self._emb = torch.nn.Embedding(vocab_size, emb_dim)
+        self._emb = torch.nn.Embedding(
+            vocab_size, emb_dim, padding_idx=pad_idx)
         self._rnn = torch.nn.GRU(
             input_size=emb_dim,
             hidden_size=hidden_dim,
@@ -50,11 +54,16 @@ class RecurrentCollaborativeModel(torch.nn.Module):
             dropout=0.5,
         )
         self._out = torch.nn.Linear(hidden_dim, vocab_size)
+        self.pad_idx = pad_idx
+        self.unk_idx = unk_idx
 
     def forward(self, inputs, hidden=None):
-        embedded = self._emb(inputs)
+        embedded = self._emb(inputs) * self.mask(inputs).unsqueeze(-1)
         out, hidden = self._rnn(embedded, hidden)
         return self._out(out)[:, -1, :]
+
+    def mask(self, x):
+        return (x != self.pad_idx) & (x != self.unk_idx)
 
 
 class SeqNet(skorch.NeuralNet):
@@ -108,7 +117,7 @@ def build_model(X_val=None, k=20):
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
-        max_epochs=1,
+        max_epochs=10,
         batch_size=128,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
