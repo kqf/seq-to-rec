@@ -14,7 +14,7 @@ from irmetrics.topk import recall
 
 from model.data import ev_data, read_data
 from model.dataset import TextPreprocessor, train_split
-from model.evaluation import evaluate, ppx
+from model.evaluation import evaluate, ppx, scoring
 
 SEED = 137
 random.seed(SEED)
@@ -129,13 +129,13 @@ def build_model(X_val=None, k=20):
                 use_caching=False,
                 lower_is_better=False,
             ),
-            # skorch.callbacks.EpochScoring(
-            #     recall_scoring,
-            #     name="recall@20",
-            #     on_train=True,
-            #     lower_is_better=False,
-            #     use_caching=False
-            # ),
+            skorch.callbacks.BatchScoring(
+                partial(scoring, k=k, func=recall),
+                name="recall@20",
+                on_train=False,
+                lower_is_better=False,
+                use_caching=True
+            ),
             skorch.callbacks.ProgressBar('count'),
         ],
     )

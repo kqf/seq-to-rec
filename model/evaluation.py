@@ -23,7 +23,7 @@ def evaluate(model, dataset, title):
 
 
 def scoring(model, X, y, k, func):
-    return func(y, model.predict_proba(X), k)
+    return func(y, model.predict_proba(X), k=k).mean()
 
 
 def ppx(model, X, y, entry="train_loss"):
