@@ -10,7 +10,7 @@ from functools import partial
 from sklearn.pipeline import make_pipeline
 from torchtext.data import Field, BucketIterator
 
-from irmetrics.topk import recall
+from irmetrics.topk import recall, rr
 
 from model.data import ev_data, read_data
 from model.dataset import TextPreprocessor, train_split
@@ -136,6 +136,13 @@ def build_model(X_val=None, k=20):
                 lower_is_better=False,
                 use_caching=True
             ),
+            skorch.callbacks.BatchScoring(
+                partial(scoring, k=k, func=rr),
+                name="mrr@20",
+                on_train=False,
+                lower_is_better=False,
+                use_caching=True
+            ),
             skorch.callbacks.ProgressBar('count'),
         ],
     )
@@ -155,11 +162,11 @@ def main(path):
     data = ev_data(train["text"])
 
     print(data)
-    model = build_model().fit(data)
+    model = build_model(ev_data(valid["text"])).fit(data)
 
     model[-1].set_params(batch_size=32)
 
-    evaluate(model, test.sample(frac=0.1), "test")
+    evaluate(model, valid, "valid")
     evaluate(model, train, "train")
 
 
