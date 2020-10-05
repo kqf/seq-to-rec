@@ -1,4 +1,4 @@
-from model.flat import build_preprocessor, build_model
+from model.rnn import build_preprocessor, build_model
 from torchtext.data import BucketIterator
 
 
