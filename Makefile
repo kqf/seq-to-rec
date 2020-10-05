@@ -3,7 +3,7 @@
 archived = 55175_105481_bundle_archive.zip
 
 train: data/processed
-	python model/flat.py --path $^
+	python model/flat/rnn.py --path $^
 
 data/processed: data/
 	python model/data.py --raw $^ --out $@
