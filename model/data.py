@@ -54,8 +54,11 @@ def read_file(path, filename, frac=None):
         dtype={0: np.int32, 1: str, 2: np.int64},
     )
     df["time"] = pd.to_datetime(df["time"])
-    df = remove_short(df, "item_id", 15)
-    df = remove_short(df)
+
+    # The original data preprocessing:
+    df = remove_short(df, "session_id")
+    df = remove_short(df, "item_id", 5)
+    df = remove_short(df, "session_id")
 
     # Ensure the data is in the right order
     df = df.sort_values(["session_id", "time"]).reset_index()
@@ -118,7 +121,10 @@ def main(raw, out, train, test):
     # Ensure test contains the same ids as the train
     # This is a very doubtful operation!
     test = test[np.in1d(test["item_id"], train["item_id"])]
+    test = remove_short(test, "session_id")
+
     valid = valid[np.in1d(valid["item_id"], train["item_id"])]
+    valid = remove_short(valid, "session_id")
 
     train_sessions = build_sessions(train)
     valid_sessions = build_sessions(valid)
