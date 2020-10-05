@@ -121,7 +121,10 @@ def main(raw, out, train, test):
     # Ensure test contains the same ids as the train
     # This is a very doubtful operation!
     test = test[np.in1d(test["item_id"], train["item_id"])]
+    test = remove_short(test, "session_id")
+
     valid = valid[np.in1d(valid["item_id"], train["item_id"])]
+    valid = remove_short(valid, "session_id")
 
     train_sessions = build_sessions(train)
     valid_sessions = build_sessions(valid)
