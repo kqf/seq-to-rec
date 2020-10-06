@@ -38,6 +38,12 @@ class CollaborativeModel(torch.nn.Module):
         embedded = self._emb(inputs) * mask
 
         average = embedded.sum(dim=1) / mask.sum(dim=1)
+
+        diff = (embedded - average.unsqueeze(1)).mean(dim=-1).unsqueeze(-1)
+
+        diff = torch.nn.functional.tanh(diff)
+
+        average = (embedded * diff).sum(dim=1) / mask.sum(dim=1)
         return self._out(average)
 
     def mask(self, x):
@@ -55,7 +61,7 @@ def build_model(X_val=None, k=20):
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
-        max_epochs=1,
+        max_epochs=4,
         batch_size=128,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
