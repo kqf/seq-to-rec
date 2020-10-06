@@ -49,7 +49,7 @@ def build_model(X_val=None, k=20):
         module=CollaborativeModel,
         module__vocab_size=100,  # Dummy dimension
         module__emb_dim=100,
-        module__hidden_dim=100,
+        # module__hidden_dim=100,
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
@@ -109,9 +109,7 @@ def main(path):
     print(data)
     model = build_model(ev_data(valid["text"])).fit(data)
 
-    model[-1].set_params(batch_size=32)
-
-    evaluate(model, test, "test")
+    evaluate(model, test.sample(frac=1. / 64), "test")
     evaluate(model, valid, "valid")
     evaluate(model, train, "train")
 
