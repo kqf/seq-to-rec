@@ -34,9 +34,11 @@ class CollaborativeModel(torch.nn.Module):
         self.unk_idx = unk_idx
 
     def forward(self, inputs, hidden=None):
-        embedded = self._emb(inputs) * self.mask(inputs).unsqueeze(-1)
-        out = embedded.mean(dim=1)
-        return self._out(out)
+        mask = self.mask(inputs).unsqueeze(-1)
+        embedded = self._emb(inputs) * mask
+
+        average = embedded.sum(dim=1) / mask.sum(dim=1)
+        return self._out(average)
 
     def mask(self, x):
         return (x != self.pad_idx) & (x != self.unk_idx)
@@ -109,7 +111,7 @@ def main(path):
     print(data)
     model = build_model(ev_data(valid["text"])).fit(data)
 
-    evaluate(model, test.sample(frac=1. / 64), "test")
+    evaluate(model, test.sample(frac=0.1), "test")
     evaluate(model, valid, "valid")
     evaluate(model, train, "train")
 
