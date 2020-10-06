@@ -29,7 +29,8 @@ class CollaborativeModel(torch.nn.Module):
         super().__init__()
         self._emb = torch.nn.Embedding(
             vocab_size, emb_dim, padding_idx=pad_idx)
-        self._fc1 = torch.nn.Linear(emb_dim, emb_dim)
+        self._fc1 = torch.nn.Linear(emb_dim, emb_dim // 2)
+        self._fc2 = torch.nn.Linear(emb_dim // 2, emb_dim)
         self._out = torch.nn.Linear(emb_dim, vocab_size)
         self.pad_idx = pad_idx
         self.unk_idx = unk_idx
@@ -40,7 +41,9 @@ class CollaborativeModel(torch.nn.Module):
 
         embedded = torch.nn.functional.relu(self._fc1(embedded))
         average = embedded.sum(dim=1) / mask.sum(dim=1)
-        return self._out(torch.nn.functional.relu(average))
+
+        upsample = self._fc2(average)
+        return self._out(torch.nn.functional.relu(upsample))
 
     def mask(self, x):
         return (x != self.pad_idx) & (x != self.unk_idx)
