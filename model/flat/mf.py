@@ -62,7 +62,7 @@ class CollaborativeModel(torch.nn.Module):
         embedded = self._emb(inputs) * mask
 
         average = embedded.sum(dim=1) / mask.sum(dim=1)
-        return self._out(average)
+        return average @ self._emb.weight.T
 
     def mask(self, x):
         return (x != self.pad_idx) & (x != self.unk_idx)
