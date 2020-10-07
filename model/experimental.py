@@ -55,24 +55,6 @@ class RecurrentCollaborativeModel(torch.nn.Module):
         return self._out(lstm_out)
 
 
-class CollaborativeModel(torch.nn.Module):
-    def __init__(self, vocab_size, emb_dim=100, hidden_dim=128):
-        super().__init__()
-        self._emb = torch.nn.Embedding(vocab_size, emb_dim)
-        self._fc0 = torch.nn.Linear(emb_dim, hidden_dim)
-        self._out = torch.nn.Linear(hidden_dim, vocab_size)
-
-    def forward(self, inputs, hidden=None):
-        embedded = self._emb(inputs)
-
-        # average over seq dimension
-        n = torch.arange(embedded.shape[1], device=embedded.device) + 1
-        cmean = torch.cumsum(embedded, dim=1) / n[None, :, None]
-
-        hidden = self._fc0(cmean)
-        return self._out(hidden)
-
-
 class SampledCriterion(torch.nn.Module):
     def __init__(self, criterion):
         super().__init__()
