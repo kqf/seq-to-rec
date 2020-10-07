@@ -24,7 +24,7 @@ torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
 
-class CollaborativeModel(torch.nn.Module):
+class CollaborativeModelSeq(torch.nn.Module):
     def __init__(self, vocab_size, emb_dim=100, pad_idx=0, unk_idx=1):
         super().__init__()
         self._emb = torch.nn.Embedding(
@@ -48,6 +48,26 @@ class CollaborativeModel(torch.nn.Module):
         return (x != self.pad_idx) & (x != self.unk_idx)
 
 
+class CollaborativeModel(torch.nn.Module):
+    def __init__(self, vocab_size, emb_dim=100, pad_idx=0, unk_idx=1):
+        super().__init__()
+        self._emb = torch.nn.Embedding(
+            vocab_size, emb_dim, padding_idx=pad_idx)
+        self._out = torch.nn.Linear(emb_dim, vocab_size)
+        self.pad_idx = pad_idx
+        self.unk_idx = unk_idx
+
+    def forward(self, inputs, hidden=None):
+        mask = self.mask(inputs).unsqueeze(-1)
+        embedded = self._emb(inputs) * mask
+
+        average = embedded.sum(dim=1) / mask.sum(dim=1)
+        return self._out(average)
+
+    def mask(self, x):
+        return (x != self.pad_idx) & (x != self.unk_idx)
+
+
 def build_model(X_val=None, k=20):
     preprocessor = build_preprocessor(min_freq=1)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -59,7 +79,7 @@ def build_model(X_val=None, k=20):
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
-        max_epochs=10,
+        max_epochs=4,
         batch_size=128,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
