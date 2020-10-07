@@ -37,14 +37,12 @@ class CollaborativeModel(torch.nn.Module):
         mask = self.mask(inputs).unsqueeze(-1)
         embedded = self._emb(inputs) * mask
 
-        average = embedded.sum(dim=1) / mask.sum(dim=1)
+        # average over seq dimension
+        seq_size = embedded.shape[1]
+        rank = seq_size - torch.arange(seq_size, device=embedded.device)
+        cmean = torch.cumsum(embedded, dim=1) / rank[None, :, None]
 
-        diff = (embedded - average.unsqueeze(1)).mean(dim=-1).unsqueeze(-1)
-
-        diff = torch.nn.functional.tanh(diff)
-
-        average = (embedded * diff).sum(dim=1) / mask.sum(dim=1)
-        return self._out(average)
+        return self._out(cmean[:, -1, :])
 
     def mask(self, x):
         return (x != self.pad_idx) & (x != self.unk_idx)
@@ -61,7 +59,7 @@ def build_model(X_val=None, k=20):
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
-        max_epochs=4,
+        max_epochs=10,
         batch_size=128,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
