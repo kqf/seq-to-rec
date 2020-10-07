@@ -42,7 +42,7 @@ class CollaborativeModel(torch.nn.Module):
         rank = seq_size - torch.arange(seq_size, device=embedded.device)
         cmean = torch.cumsum(embedded, dim=1) / rank[None, :, None]
 
-        return self._out(cmean)
+        return self._out(cmean[:, -1, :])
 
     def mask(self, x):
         return (x != self.pad_idx) & (x != self.unk_idx)
