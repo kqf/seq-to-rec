@@ -57,9 +57,9 @@ class Model(torch.nn.Module):
         embedded = self._emb(inputs) * mask
 
         sl = embedded[:, [-1], :]
-        sg, _ = self._att(embedded, sl, embedded)
+        sg = self._att(embedded, sl, embedded)
 
-        hidden = self._out(torch.cat([sl, sg], dim=-1).squeeze(1))
+        hidden = self._out(torch.cat(sl, sg))
         return hidden @ self._emb.weight.T
 
     def mask(self, x):
