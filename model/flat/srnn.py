@@ -24,7 +24,7 @@ torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
 
-class CollaborativeModel(torch.nn.Module):
+class Model(torch.nn.Module):
     def __init__(self, vocab_size, emb_dim=100, pad_idx=0, unk_idx=1):
         super().__init__()
         self._emb = torch.nn.Embedding(
@@ -37,8 +37,12 @@ class CollaborativeModel(torch.nn.Module):
         mask = self.mask(inputs).unsqueeze(-1)
         embedded = self._emb(inputs) * mask
 
-        average = embedded.sum(dim=1) / mask.sum(dim=1)
-        return average @ self._emb.weight.T
+        # average over seq dimension
+        seq_size = embedded.shape[1]
+        rank = seq_size - torch.arange(seq_size, device=embedded.device)
+        cmean = torch.cumsum(embedded, dim=1) / rank[None, :, None]
+
+        return self._out(cmean[:, -1, :])
 
     def mask(self, x):
         return (x != self.pad_idx) & (x != self.unk_idx)
@@ -48,7 +52,7 @@ def build_model(X_val=None, k=20):
     preprocessor = build_preprocessor(min_freq=1)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     model = SeqNet(
-        module=CollaborativeModel,
+        module=Model,
         module__vocab_size=100,  # Dummy dimension
         module__emb_dim=100,
         # module__hidden_dim=100,
