@@ -24,7 +24,7 @@ torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
 
-class CollaborativeModelSeq(torch.nn.Module):
+class Model(torch.nn.Module):
     def __init__(self, vocab_size, emb_dim=100, pad_idx=0, unk_idx=1):
         super().__init__()
         self._emb = torch.nn.Embedding(
