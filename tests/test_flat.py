@@ -5,6 +5,7 @@ from model.flat.nn import build_preprocessor
 from model.flat.srnn import build_model as srnn
 from model.flat.rnn import build_model as rnn
 from model.flat.mf import build_model as mf
+from model.flat.srgnn import build_model as srgnn
 
 
 def test_data(flat_data, flat_oov, batch_size=32):
@@ -23,7 +24,8 @@ def test_data(flat_data, flat_oov, batch_size=32):
 @pytest.mark.parametrize("build_model", [
     rnn,
     mf,
-    srnn
+    srnn,
+    srgnn,
 ])
 def test_model(build_model, flat_data):
     model = build_model(k=2).fit(flat_data)

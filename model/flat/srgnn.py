@@ -26,17 +26,20 @@ torch.backends.cudnn.deterministic = True
 
 class AdditiveAttention(torch.nn.Module):
     def __init__(self, k_dim, q_dim, v_dim):
+        super().__init__()
         self._fck = torch.nn.Linear(k_dim, v_dim, bias=False)
         self._fcq = torch.nn.Linear(k_dim, v_dim, bias=True)
         self._fcv = torch.nn.Linear(v_dim, 1)
+        self._sig = torch.nn.Sigmoid()
 
     def forward(self, k, q, v, mask=None):
-        energy = self._fcv(self.torch.nn.sigmoid(self._fck(k) + self._fcq(q)))
+        energy = self._fcv(self._sig(self._fck(k) + self._fcq(q)))
+
         if mask is not None:
             energy = energy.masked_fill(mask == 0, -1e9)
 
-        alpha = torch.softmax(energy, dim=1)
-        return alpha * v
+        p_atten = torch.softmax(energy, dim=1)
+        return torch.sum(p_atten * v, dim=1, keepdim=True), p_atten
 
 
 class Model(torch.nn.Module):
@@ -54,9 +57,9 @@ class Model(torch.nn.Module):
         embedded = self._emb(inputs) * mask
 
         sl = embedded[:, [-1], :]
-        sg = self._att(embedded, sl, embedded)
+        sg, _ = self._att(embedded, sl, embedded)
 
-        hidden = self._out(torch.cat(sl, sg))
+        hidden = self._out(torch.cat([sl, sg], dim=-1).squeeze(1))
         return hidden @ self._emb.weight.T
 
     def mask(self, x):
