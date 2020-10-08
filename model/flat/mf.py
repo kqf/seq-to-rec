@@ -24,30 +24,6 @@ torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
 
-class CollaborativeModelSeq(torch.nn.Module):
-    def __init__(self, vocab_size, emb_dim=100, pad_idx=0, unk_idx=1):
-        super().__init__()
-        self._emb = torch.nn.Embedding(
-            vocab_size, emb_dim, padding_idx=pad_idx)
-        self._out = torch.nn.Linear(emb_dim, vocab_size)
-        self.pad_idx = pad_idx
-        self.unk_idx = unk_idx
-
-    def forward(self, inputs, hidden=None):
-        mask = self.mask(inputs).unsqueeze(-1)
-        embedded = self._emb(inputs) * mask
-
-        # average over seq dimension
-        seq_size = embedded.shape[1]
-        rank = seq_size - torch.arange(seq_size, device=embedded.device)
-        cmean = torch.cumsum(embedded, dim=1) / rank[None, :, None]
-
-        return self._out(cmean[:, -1, :])
-
-    def mask(self, x):
-        return (x != self.pad_idx) & (x != self.unk_idx)
-
-
 class CollaborativeModel(torch.nn.Module):
     def __init__(self, vocab_size, emb_dim=100, pad_idx=0, unk_idx=1):
         super().__init__()
