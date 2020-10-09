@@ -66,6 +66,12 @@ class Model(torch.nn.Module):
         return (x != self.pad_idx) & (x != self.unk_idx)
 
 
+def xavier_init(x):
+    if x.dim() < 2:
+        return
+    return torch.nn.init.xavier_uniform_(x)
+
+
 def build_model(X_val=None, k=20):
     preprocessor = build_preprocessor(min_freq=1)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -77,7 +83,7 @@ def build_model(X_val=None, k=20):
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
-        max_epochs=4,
+        max_epochs=5,
         batch_size=128,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
@@ -90,6 +96,7 @@ def build_model(X_val=None, k=20):
         device=device,
         predict_nonlinearity=partial(inference, k=k, device=device),
         callbacks=[
+            skorch.callbacks.Initializer("*_fc*", fn=xavier_init),
             skorch.callbacks.GradientNormClipping(1.),  # Original paper
             DynamicVariablesSetter(),
             skorch.callbacks.EpochScoring(
