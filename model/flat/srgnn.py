@@ -57,7 +57,7 @@ class Model(torch.nn.Module):
         embedded = self._emb(inputs) * mask
 
         sl = embedded[:, [-1], :]
-        sg, _ = self._att(embedded, sl, embedded)
+        sg, _ = self._att(embedded, sl, embedded, mask)
 
         hidden = self._out(torch.cat([sl, sg], dim=-1).squeeze(1))
         return hidden @ self._emb.weight.T
@@ -77,7 +77,7 @@ def build_model(X_val=None, k=20):
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
-        max_epochs=8,
+        max_epochs=4,
         batch_size=128,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
