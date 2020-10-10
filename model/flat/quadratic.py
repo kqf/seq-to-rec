@@ -39,9 +39,8 @@ class AdditiveAttention(torch.nn.Module):
         self._sig = torch.nn.Sigmoid()
 
     def forward(self, k, q, v, mask=None):
-        d_k = q.size(-1)
         self_energy = self._sig(self._fck(k) @ self._fcq(q).transpose(-2, -1))
-        self_energy = self_energy / d_k ** 0.5
+        self_energy = self_energy / q.size(-1) ** 0.5
 
         offdiagonal = 1 - torch.eye(k.shape[1], device=k.device).unsqueeze(0)
 
