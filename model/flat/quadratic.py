@@ -27,8 +27,14 @@ torch.backends.cudnn.deterministic = True
 class AdditiveAttention(torch.nn.Module):
     def __init__(self, k_dim, q_dim, v_dim):
         super().__init__()
-        self._fck = torch.nn.Linear(k_dim, v_dim, bias=False)
-        self._fcq = torch.nn.Linear(k_dim, v_dim, bias=True)
+        self._fck = torch.nn.Sequential(
+            torch.nn.Linear(k_dim, v_dim, bias=False),
+            torch.nn.Sigmoid()
+        )
+        self._fcq = torch.nn.Sequential(
+            torch.nn.Linear(k_dim, v_dim, bias=True),
+            torch.nn.Sigmoid()
+        )
         self._fcv = torch.nn.Linear(v_dim, 1)
         self._sig = torch.nn.Sigmoid()
 
