@@ -51,7 +51,7 @@ class AdditiveAttention(torch.nn.Module):
             energy = energy.masked_fill(mask == 0, -1e9)
 
         p_atten = torch.softmax(energy, dim=1)
-        return (p_atten * v).mean(dim=1), p_atten
+        return (p_atten * v).sum(dim=1), p_atten
 
 
 class Model(torch.nn.Module):
