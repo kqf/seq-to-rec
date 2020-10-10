@@ -37,16 +37,15 @@ class AdditiveAttention(torch.nn.Module):
         self_energy = self._sig(self._fck(k) @ self._fcq(q).transpose(-2, -1))
         self_energy = self_energy / d_k ** 0.5
 
-        offdiagonal = 1 - torch.eye(k.shape[1], device=k.device)
+        offdiagonal = 1 - torch.eye(k.shape[1], device=k.device).unsqueeze(0)
 
         # Calculate energy excluding self-interactions
-        energy = (offdiagonal.unsqueeze(0) * self_energy).sum(dim=-1)
+        energy = (offdiagonal * self_energy).sum(dim=-1, keepdim=True)
 
         if mask is not None:
-            energy = energy.masked_fill(mask.squeeze(dim=-1) == 0, -1e9)
+            energy = energy.masked_fill(mask == 0, -1e9)
 
         p_atten = torch.softmax(energy, dim=1)
-        # Sum over all sequence
         return (p_atten * v).sum(dim=1), p_atten
 
 
