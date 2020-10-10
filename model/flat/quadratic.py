@@ -45,13 +45,13 @@ class AdditiveAttention(torch.nn.Module):
         offdiagonal = 1 - torch.eye(k.shape[1], device=k.device).unsqueeze(0)
 
         # Calculate energy excluding self-interactions
-        energy = (offdiagonal * self_energy).sum(dim=-1, keepdim=True)
+        energy = (offdiagonal * self_energy).mean(dim=-1, keepdim=True)
 
         if mask is not None:
             energy = energy.masked_fill(mask == 0, -1e9)
 
         p_atten = torch.softmax(energy, dim=1)
-        return (p_atten * v).sum(dim=1), p_atten
+        return (p_atten * v).mean(dim=1), p_atten
 
 
 class Model(torch.nn.Module):
@@ -60,7 +60,7 @@ class Model(torch.nn.Module):
         self._emb = torch.nn.Embedding(
             vocab_size, emb_dim, padding_idx=pad_idx)
         self._att = AdditiveAttention(emb_dim, emb_dim, emb_dim)
-        self._out = torch.nn.Linear(emb_dim, emb_dim)
+        self._out = torch.nn.Linear(2 * emb_dim, emb_dim)
         self.pad_idx = pad_idx
         self.unk_idx = unk_idx
 
@@ -69,7 +69,8 @@ class Model(torch.nn.Module):
         embedded = self._emb(inputs) * mask
         sg, _ = self._att(embedded, embedded, embedded, mask)
 
-        hidden = self._out(sg).squeeze(1)
+        sl = embedded[:, -1, :]
+        hidden = self._out(torch.cat([sg, sl], dim=-1))
         return hidden @ self._emb.weight.T
 
     def mask(self, x):
