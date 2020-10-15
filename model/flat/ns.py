@@ -2,6 +2,7 @@ import click
 import torch
 import skorch
 import random
+import warnings
 
 import numpy as np
 
@@ -48,7 +49,8 @@ class DynamicVariablesSetter(skorch.callbacks.Callback):
 class NegativeSamplingIterator(BucketIterator):
     def __init__(self, dataset, batch_size,
                  neg_samples, ns_exponent, *args, **kwargs):
-        super().__init__(dataset, batch_size, *args, **kwargs)
+        with warnings.catch_warnings(record=True):
+            super().__init__(dataset, batch_size, *args, **kwargs)
         self.ns_exponent = ns_exponent
         self.neg_samples = neg_samples
 
@@ -59,13 +61,15 @@ class NegativeSamplingIterator(BucketIterator):
         self.freq = np.array(freq) / np.sum(freq)
 
     def __iter__(self):
-        for batch in super().__iter__():
-            indices = torch.cat([batch.gold, self.sample(batch.text)], dim=-1)
-            inputs = {
-                "text": batch.text,
-                "indices": indices,
-            }
-            yield inputs, batch.text.new_zeros(batch.text.shape[0])
+        with warnings.catch_warnings(record=True):
+            for batch in super().__iter__():
+                samples = self.sample(batch.text)
+                indices = torch.cat([batch.gold, samples], dim=-1)
+                inputs = {
+                    "text": batch.text,
+                    "indices": indices,
+                }
+                yield inputs, batch.text.new_zeros(batch.text.shape[0])
 
     def sample(self, text):
         negatives = np.random.choice(
@@ -124,7 +128,7 @@ def build_model(X_val=None, k=20):
         max_epochs=5,
         batch_size=128,
         iterator_train=NegativeSamplingIterator,
-        iterator_train__neg_samples=6,
+        iterator_train__neg_samples=100,
         iterator_train__ns_exponent=3. / 4.,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
