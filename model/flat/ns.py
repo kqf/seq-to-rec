@@ -14,7 +14,7 @@ from model.data import ev_data, read_data
 from model.dataset import train_split
 from model.evaluation import evaluate, ppx, scoring
 from model.flat.nn import SeqNet, inference
-from model.flat.nn import build_preprocessor
+from model.flat.nn import build_preprocessor, SequenceIterator
 from model.flat.quadratic import AdditiveAttention
 from torchtext.data import BucketIterator
 
@@ -129,9 +129,7 @@ def build_model(X_val=None, k=20):
         iterator_train__shuffle=True,
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
-        iterator_valid=NegativeSamplingIterator,
-        iterator_valid__neg_samples=20,
-        iterator_valid__ns_exponent=3. / 4.,
+        iterator_valid=SequenceIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=partial(train_split, prep=preprocessor, X_val=X_val),
