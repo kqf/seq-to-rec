@@ -13,7 +13,7 @@ from irmetrics.topk import recall, rr
 from model.data import ev_data, read_data
 from model.dataset import train_split
 from model.evaluation import evaluate, ppx, scoring
-from model.flat.nn import SeqNet, DynamicVariablesSetter, inference
+from model.flat.nn import SeqNet, inference
 from model.flat.nn import build_preprocessor
 from model.flat.quadratic import AdditiveAttention
 from torchtext.data import BucketIterator
@@ -25,6 +25,24 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
+
+
+class DynamicVariablesSetter(skorch.callbacks.Callback):
+    def on_train_begin(self, net, X, y):
+        vocab = X.fields["text"].vocab
+        net.set_params(module__vocab_size=len(vocab))
+        net.set_params(module__pad_idx=vocab["<pad>"])
+        net.set_params(module__unk_idx=vocab["<unk>"])
+        # Don't ignore any indeces for criterion
+        # net.set_params(criterion__ignore_index=vocab["<pad>"])
+
+        n_pars = self.count_parameters(net.module_)
+        print(f'The model has {n_pars:,} trainable parameters')
+        print(f'There number of unique items is {len(vocab)}')
+
+    @staticmethod
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 
 class NegativeSamplingIterator(BucketIterator):
@@ -42,12 +60,12 @@ class NegativeSamplingIterator(BucketIterator):
 
     def __iter__(self):
         for batch in super().__iter__():
+            indices = torch.cat([batch.gold, self.sample(batch.text)], dim=-1)
             inputs = {
                 "text": batch.text,
-                "target": batch.gold,
-                "negatives": self.sample(batch.text),
+                "indices": indices,
             }
-            yield inputs, batch.gold.view(-1)
+            yield inputs, batch.text.new_zeros(batch.text.shape[0])
 
     def sample(self, text):
         negatives = np.random.choice(
@@ -68,13 +86,18 @@ class Model(torch.nn.Module):
         self.pad_idx = pad_idx
         self.unk_idx = unk_idx
 
-    def forward(self, text, target, negatives, hidden=None):
+    def forward(self, text, indices=None, hidden=None):
         mask = self.mask(text).unsqueeze(-1)
         embedded = self._emb(text) * mask
         sg, _ = self._att(embedded, embedded, embedded, mask)
 
         sl = embedded[:, -1, :]
         hidden = self._out(torch.cat([sg, sl], dim=-1))
+
+        if indices is not None:
+            matrix = self._emb.weight[indices]
+            return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
+
         return hidden @ self._emb.weight.T
 
     def mask(self, x):
@@ -107,7 +130,7 @@ def build_model(X_val=None, k=20):
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
         iterator_valid=NegativeSamplingIterator,
-        iterator_valid__neg_samples=6,
+        iterator_valid__neg_samples=20,
         iterator_valid__ns_exponent=3. / 4.,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
