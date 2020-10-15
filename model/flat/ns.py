@@ -75,6 +75,9 @@ class Model(torch.nn.Module):
 
         sl = embedded[:, -1, :]
         hidden = self._out(torch.cat([sg, sl], dim=-1))
+
+        matrix = self._emb.weight[indices]
+        return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
         return hidden @ self._emb.weight.T
 
     def mask(self, x):
