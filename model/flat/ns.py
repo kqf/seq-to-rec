@@ -42,12 +42,12 @@ class NegativeSamplingIterator(BucketIterator):
 
     def __iter__(self):
         for batch in super().__iter__():
+            indices = torch.cat([batch.gold, self.sample(batch.text)], dim=-1)
             inputs = {
                 "text": batch.text,
-                "target": batch.gold,
-                "negatives": self.sample(batch.text),
+                "indices": indices,
             }
-            yield inputs, batch.gold.view(-1)
+            yield inputs, batch.text.new_zeros(batch.text.shape[0])
 
     def sample(self, text):
         negatives = np.random.choice(
@@ -68,7 +68,7 @@ class Model(torch.nn.Module):
         self.pad_idx = pad_idx
         self.unk_idx = unk_idx
 
-    def forward(self, text, target, negatives, hidden=None):
+    def forward(self, text, indices=None, hidden=None):
         mask = self.mask(text).unsqueeze(-1)
         embedded = self._emb(text) * mask
         sg, _ = self._att(embedded, embedded, embedded, mask)
