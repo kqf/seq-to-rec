@@ -14,8 +14,10 @@ from model.data import ev_data, read_data
 from model.dataset import train_split
 from model.evaluation import evaluate, ppx, scoring
 from model.flat.nn import SeqNet, DynamicVariablesSetter, inference
-from model.flat.nn import build_preprocessor, SequenceIterator
+from model.flat.nn import build_preprocessor
 from model.flat.quadratic import AdditiveAttention
+from torchtext.data import BucketIterator
+
 
 SEED = 137
 random.seed(SEED)
@@ -23,6 +25,37 @@ np.random.seed(SEED)
 torch.manual_seed(SEED)
 torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
+
+
+class NegativeSamplingIterator(BucketIterator):
+    def __init__(self, dataset, batch_size,
+                 neg_samples, ns_exponent, *args, **kwargs):
+        super().__init__(dataset, batch_size, *args, **kwargs)
+        self.ns_exponent = ns_exponent
+        self.neg_samples = neg_samples
+
+        vocab = dataset.fields["text"].vocab
+        freq = [vocab.freqs[s]**self.ns_exponent for s in vocab.itos]
+
+        # Normalize
+        self.freq = np.array(freq) / np.sum(freq)
+
+    def __iter__(self):
+        for batch in super().__iter__():
+            inputs = {
+                "text": batch.text,
+                "target": batch.gold,
+                "negatives": self.sample(batch.text),
+            }
+            yield inputs, batch.gold.view(-1)
+
+    def sample(self, text):
+        negatives = np.random.choice(
+            np.arange(len(self.freq)),
+            p=self.freq,
+            size=(text.shape[0], self.neg_samples),
+        )
+        return torch.tensor(negatives, dtype=text.dtype).to(text.device)
 
 
 class Model(torch.nn.Module):
@@ -35,9 +68,9 @@ class Model(torch.nn.Module):
         self.pad_idx = pad_idx
         self.unk_idx = unk_idx
 
-    def forward(self, inputs, hidden=None):
-        mask = self.mask(inputs).unsqueeze(-1)
-        embedded = self._emb(inputs) * mask
+    def forward(self, text, target, negatives, hidden=None):
+        mask = self.mask(text).unsqueeze(-1)
+        embedded = self._emb(text) * mask
         sg, _ = self._att(embedded, embedded, embedded, mask)
 
         sl = embedded[:, -1, :]
@@ -67,11 +100,15 @@ def build_model(X_val=None, k=20):
         criterion=torch.nn.CrossEntropyLoss,
         max_epochs=5,
         batch_size=128,
-        iterator_train=SequenceIterator,
+        iterator_train=NegativeSamplingIterator,
+        iterator_train__neg_samples=6,
+        iterator_train__ns_exponent=3. / 4.,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
-        iterator_valid=SequenceIterator,
+        iterator_valid=NegativeSamplingIterator,
+        iterator_valid__neg_samples=6,
+        iterator_valid__ns_exponent=3. / 4.,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=partial(train_split, prep=preprocessor, X_val=X_val),
