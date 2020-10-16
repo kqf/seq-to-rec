@@ -2,6 +2,7 @@ import click
 import torch
 import skorch
 import random
+import warnings
 
 import numpy as np
 
@@ -14,7 +15,7 @@ from model.data import ev_data, read_data
 from model.dataset import train_split
 from model.evaluation import evaluate, ppx, scoring
 from model.flat.nn import SeqNet, inference
-from model.flat.nn import build_preprocessor
+from model.flat.nn import build_preprocessor, SequenceIterator
 from model.flat.quadratic import AdditiveAttention
 from torchtext.data import BucketIterator
 
@@ -48,7 +49,8 @@ class DynamicVariablesSetter(skorch.callbacks.Callback):
 class NegativeSamplingIterator(BucketIterator):
     def __init__(self, dataset, batch_size,
                  neg_samples, ns_exponent, *args, **kwargs):
-        super().__init__(dataset, batch_size, *args, **kwargs)
+        with warnings.catch_warnings(record=True):
+            super().__init__(dataset, batch_size, *args, **kwargs)
         self.ns_exponent = ns_exponent
         self.neg_samples = neg_samples
 
@@ -59,13 +61,15 @@ class NegativeSamplingIterator(BucketIterator):
         self.freq = np.array(freq) / np.sum(freq)
 
     def __iter__(self):
-        for batch in super().__iter__():
-            indices = torch.cat([batch.gold, self.sample(batch.text)], dim=-1)
-            inputs = {
-                "text": batch.text,
-                "indices": indices,
-            }
-            yield inputs, batch.text.new_zeros(batch.text.shape[0])
+        with warnings.catch_warnings(record=True):
+            for batch in super().__iter__():
+                samples = self.sample(batch.text)
+                indices = torch.cat([batch.gold, samples], dim=-1)
+                inputs = {
+                    "text": batch.text,
+                    "indices": indices,
+                }
+                yield inputs, batch.text.new_zeros(batch.text.shape[0])
 
     def sample(self, text):
         negatives = np.random.choice(
@@ -124,14 +128,12 @@ def build_model(X_val=None, k=20):
         max_epochs=5,
         batch_size=128,
         iterator_train=NegativeSamplingIterator,
-        iterator_train__neg_samples=6,
+        iterator_train__neg_samples=100,
         iterator_train__ns_exponent=3. / 4.,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
-        iterator_valid=NegativeSamplingIterator,
-        iterator_valid__neg_samples=20,
-        iterator_valid__ns_exponent=3. / 4.,
+        iterator_valid=SequenceIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=partial(train_split, prep=preprocessor, X_val=X_val),
