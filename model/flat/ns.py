@@ -57,6 +57,10 @@ class NegativeSamplingIterator(BucketIterator):
         vocab = dataset.fields["text"].vocab
         freq = [vocab.freqs[s]**self.ns_exponent for s in vocab.itos]
 
+        # Ensure no "pad/unk" as negative samples
+        freq[vocab.stoi["<unk>"]] = 0
+        freq[vocab.stoi["<pad>"]] = 0
+
         # Normalize
         self.freq = np.array(freq) / np.sum(freq)
 
