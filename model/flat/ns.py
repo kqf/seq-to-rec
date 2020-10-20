@@ -78,7 +78,7 @@ class NegativeSamplingIterator(BucketIterator):
     def sample(self, text):
         negatives = np.random.choice(
             np.arange(len(self.freq)),
-            p=self.freq,
+            # p=self.freq,
             size=(text.shape[0], self.neg_samples),
         )
         return torch.tensor(negatives, dtype=text.dtype).to(text.device)
@@ -88,7 +88,7 @@ class ModelNsOnly(torch.nn.Module):
     def __init__(self, vocab_size, emb_dim=100, pad_idx=0, unk_idx=1):
         super().__init__()
         self._emb = torch.nn.Embedding(
-            vocab_size, emb_dim, padding_idx=pad_idx, sparse=True)
+            vocab_size, emb_dim, padding_idx=pad_idx)
         self._att = AdditiveAttention(emb_dim, emb_dim, emb_dim)
         self._out = torch.nn.Linear(2 * emb_dim, emb_dim)
         self.pad_idx = pad_idx
@@ -155,8 +155,8 @@ def build_model(X_val=None, k=20):
         module__vocab_size=100,  # Dummy dimension
         module__emb_dim=100,
         # module__hidden_dim=100,
-        optimizer=torch.optim.SGD,
-        optimizer__lr=0.06,
+        optimizer=torch.optim.Adam,
+        optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
         max_epochs=5,
         batch_size=128,
