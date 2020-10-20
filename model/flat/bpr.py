@@ -73,7 +73,7 @@ class NegativeSamplingIterator(BucketIterator):
                     "text": batch.text,
                     "indices": indices,
                 }
-                yield inputs, batch.text.new_zeros(batch.text.shape[0])
+                yield inputs, torch.tensor(batch.text.shape[1] + 1).long()
 
     def sample(self, text):
         negatives = np.random.choice(
@@ -103,7 +103,7 @@ class Model(torch.nn.Module):
         hidden = self._out(torch.cat([sg, sl], dim=-1))
 
         if indices is not None:
-            matrix = self._emb(indices)
+            matrix = self._emb(torch.cat([text, indices], dim=-1))
             return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
 
         return hidden @ self._emb.weight.T
@@ -118,6 +118,14 @@ def xavier_init(x):
     return torch.nn.init.xavier_uniform_(x)
 
 
+class BPRLoss(torch.nn.Module):
+    def forward(self, logits, true_index):
+        positive_dist = logits[:, :true_index.item()].unsqueeze(-1)
+        negative_dist = logits[:, true_index.item():].unsqueeze(-2)
+        diff = positive_dist - negative_dist
+        return - torch.nn.functional.logsigmoid(diff).mean()
+
+
 def build_model(X_val=None, k=20):
     preprocessor = build_preprocessor(min_freq=1)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -128,17 +136,19 @@ def build_model(X_val=None, k=20):
         # module__hidden_dim=100,
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
-        criterion=torch.nn.CrossEntropyLoss,
+        criterion=BPRLoss,
         max_epochs=5,
         batch_size=128,
         iterator_train=NegativeSamplingIterator,
         # iterator_train=SequenceIterator,
-        iterator_train__neg_samples=1000,
+        iterator_train__neg_samples=100,
         iterator_train__ns_exponent=0.,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
-        iterator_valid=SequenceIterator,
+        iterator_valid=NegativeSamplingIterator,
+        iterator_valid__neg_samples=100,
+        iterator_valid__ns_exponent=0.,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=partial(train_split, prep=preprocessor, X_val=X_val),
