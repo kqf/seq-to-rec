@@ -103,7 +103,8 @@ class ModelNsOnly(torch.nn.Module):
         hidden = self._out(torch.cat([sg, sl], dim=-1))
 
         if indices is not None:
-            matrix = self._emb.weight[indices]
+            with torch.no_grad():
+                matrix = self._emb.weight[indices]
             return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
 
         return hidden @ self._emb.weight.T
@@ -161,6 +162,7 @@ def build_model(X_val=None, k=20):
         max_epochs=5,
         batch_size=128,
         iterator_train=NegativeSamplingIterator,
+        # iterator_train=SequenceIterator,
         iterator_train__neg_samples=100,
         iterator_train__ns_exponent=0.,
         iterator_train__shuffle=True,
