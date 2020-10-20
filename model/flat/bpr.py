@@ -73,15 +73,22 @@ class NegativeSamplingIterator(BucketIterator):
                     "text": batch.text,
                     "indices": indices,
                 }
-                yield inputs, torch.empty(0)
+                yield inputs, inputs, torch.empty(0)
 
     def sample(self, text):
-        negatives = np.random.choice(
-            np.arange(len(self.freq)),
-            # p=self.freq,
+        # negatives = np.random.choice(
+        #     np.arange(len(self.freq)),
+        #     # p=self.freq,
+        #     size=(text.shape[0], self.neg_samples),
+        # )
+        # return torch.tensor(negatives, dtype=text.dtype).to(text.device)
+
+        negatives = torch.randint(
+            1, len(self.freq),
             size=(text.shape[0], self.neg_samples),
+            device=text.device
         )
-        return torch.tensor(negatives, dtype=text.dtype).to(text.device)
+        return negatives
 
 
 class Model(torch.nn.Module):
