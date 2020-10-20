@@ -162,7 +162,7 @@ def build_model(X_val=None, k=20):
         batch_size=128,
         iterator_train=NegativeSamplingIterator,
         # iterator_train=SequenceIterator,
-        iterator_train__neg_samples=100,
+        iterator_train__neg_samples=1000,
         iterator_train__ns_exponent=0.,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
