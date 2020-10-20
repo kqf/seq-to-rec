@@ -88,7 +88,8 @@ class Model(torch.nn.Module):
     def __init__(self, vocab_size, emb_dim=100, pad_idx=0, unk_idx=1):
         super().__init__()
         self._emb = torch.nn.Embedding(
-            vocab_size, emb_dim, padding_idx=pad_idx)
+            vocab_size, emb_dim // 2, padding_idx=pad_idx)
+        self._fc0 = torch.nn.Linear(emb_dim // 2, emb_dim)
         self._att = AdditiveAttention(emb_dim, emb_dim, emb_dim)
         self._out = torch.nn.Linear(2 * emb_dim, emb_dim)
         self.pad_idx = pad_idx
@@ -96,17 +97,17 @@ class Model(torch.nn.Module):
 
     def forward(self, text, indices=None, hidden=None):
         mask = self.mask(text).unsqueeze(-1)
-        embedded = self._emb(text) * mask
+        embedded = self._fc0(self._emb(text)) * mask
         sg, _ = self._att(embedded, embedded, embedded, mask)
 
         sl = embedded[:, -1, :]
         hidden = self._out(torch.cat([sg, sl], dim=-1))
 
         if indices is not None:
-            matrix = self._emb.weight[indices]
+            matrix = self._fc0(self._emb.weight[indices])
             return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
 
-        return hidden @ self._emb.weight.T
+        return hidden @ self._fc0(self._emb.weight).T
 
     def mask(self, x):
         return (x != self.pad_idx) & (x != self.unk_idx)
