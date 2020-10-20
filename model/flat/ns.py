@@ -104,7 +104,7 @@ class Model(torch.nn.Module):
         hidden = self._out(torch.cat([sg, sl], dim=-1))
 
         if indices is not None:
-            matrix = self._emb.weight[indices]
+            matrix = self._fc0(self._emb.weight[indices])
             return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
 
         return hidden @ self._fc0(self._emb.weight).T
