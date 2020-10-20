@@ -73,7 +73,7 @@ class NegativeSamplingIterator(BucketIterator):
                     "text": batch.text,
                     "indices": indices,
                 }
-                yield inputs, torch.tensor(batch.text.shape[1] + 1).long()
+                yield inputs, torch.empty(0)
 
     def sample(self, text):
         negatives = np.random.choice(
@@ -103,7 +103,7 @@ class Model(torch.nn.Module):
         hidden = self._out(torch.cat([sg, sl], dim=-1))
 
         if indices is not None:
-            matrix = self._emb(torch.cat([text, indices], dim=-1))
+            matrix = self._emb(indices)
             return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
 
         return hidden @ self._emb.weight.T
@@ -120,8 +120,8 @@ def xavier_init(x):
 
 class BPRLoss(torch.nn.Module):
     def forward(self, logits, true_index):
-        positive_dist = logits[:, :true_index.item()].unsqueeze(-1)
-        negative_dist = logits[:, true_index.item():].unsqueeze(-2)
+        positive_dist = logits[:, [0]]
+        negative_dist = logits[:, 0:]
         diff = positive_dist - negative_dist
         return - torch.nn.functional.logsigmoid(diff).mean()
 
@@ -137,8 +137,8 @@ def build_model(X_val=None, k=20):
         optimizer=torch.optim.Adam,
         optimizer__lr=0.002,
         criterion=BPRLoss,
-        max_epochs=5,
-        batch_size=128,
+        max_epochs=10,
+        batch_size=512,
         iterator_train=NegativeSamplingIterator,
         # iterator_train=SequenceIterator,
         iterator_train__neg_samples=100,
@@ -146,9 +146,9 @@ def build_model(X_val=None, k=20):
         iterator_train__shuffle=True,
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
-        iterator_valid=NegativeSamplingIterator,
-        iterator_valid__neg_samples=100,
-        iterator_valid__ns_exponent=0.,
+        iterator_valid=SequenceIterator,
+        # iterator_valid__neg_samples=100,
+        # iterator_valid__ns_exponent=0.,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
         train_split=partial(train_split, prep=preprocessor, X_val=X_val),
