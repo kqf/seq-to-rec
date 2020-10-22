@@ -2,6 +2,7 @@ import click
 import torch
 import skorch
 import random
+import warnings
 
 import numpy as np
 
@@ -13,8 +14,11 @@ from irmetrics.topk import recall, rr
 from model.data import ev_data, read_data
 from model.dataset import train_split
 from model.evaluation import evaluate, ppx, scoring
-from model.flat.nn import SeqNet, DynamicVariablesSetter, inference
+from model.flat.nn import SeqNet, inference
 from model.flat.nn import build_preprocessor, SequenceIterator
+from model.flat.quadratic import AdditiveAttention
+from torchtext.data import BucketIterator
+
 
 SEED = 137
 random.seed(SEED)
@@ -24,34 +28,60 @@ torch.cuda.manual_seed(SEED)
 torch.backends.cudnn.deterministic = True
 
 
-class AdditiveAttention(torch.nn.Module):
-    def __init__(self, k_dim, q_dim, v_dim):
-        super().__init__()
-        self._fck = torch.nn.Sequential(
-            torch.nn.Linear(k_dim, v_dim, bias=False),
-            torch.nn.Sigmoid()
+class DynamicVariablesSetter(skorch.callbacks.Callback):
+    def on_train_begin(self, net, X, y):
+        vocab = X.fields["text"].vocab
+        net.set_params(module__vocab_size=len(vocab))
+        net.set_params(module__pad_idx=vocab["<pad>"])
+        net.set_params(module__unk_idx=vocab["<unk>"])
+        # Don't ignore any indeces for criterion
+        # net.set_params(criterion__ignore_index=vocab["<pad>"])
+
+        n_pars = self.count_parameters(net.module_)
+        print(f'The model has {n_pars:,} trainable parameters')
+        print(f'There number of unique items is {len(vocab)}')
+
+    @staticmethod
+    def count_parameters(model):
+        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+
+class NegativeSamplingIterator(BucketIterator):
+    def __init__(self, dataset, batch_size,
+                 neg_samples, ns_exponent, *args, **kwargs):
+        with warnings.catch_warnings(record=True):
+            super().__init__(dataset, batch_size, *args, **kwargs)
+        self.ns_exponent = ns_exponent
+        self.neg_samples = neg_samples
+
+        vocab = dataset.fields["text"].vocab
+        freq = [vocab.freqs[s]**self.ns_exponent for s in vocab.itos]
+
+        # Ensure no "pad/unk" as negative samples
+        freq[vocab.stoi["<unk>"]] = 0
+        freq[vocab.stoi["<pad>"]] = 0
+
+        # Normalize
+        self.freq = np.array(freq) / np.sum(freq)
+
+    def __iter__(self):
+        with warnings.catch_warnings(record=True):
+            for batch in super().__iter__():
+                samples = self.sample(batch.text)
+                indices = torch.cat([batch.gold, samples], dim=-1)
+                inputs = {
+                    "text": batch.text,
+                    "indices": indices,
+                }
+                yield inputs, batch.text.new_zeros(batch.text.shape[0])
+
+    def sample(self, text):
+        negatives = np.random.choice(
+            np.arange(len(self.freq)),
+            # p=self.freq,
+            size=(text.shape[0], self.neg_samples),
         )
-        self._fcq = torch.nn.Sequential(
-            torch.nn.Linear(k_dim, v_dim, bias=True),
-            torch.nn.Sigmoid()
-        )
-        self._fcv = torch.nn.Linear(v_dim, 1)
-        self._sig = torch.nn.Sigmoid()
-
-    def forward(self, k, q, v, mask=None):
-        self_energy = self._sig(self._fck(k) @ self._fcq(q).transpose(-2, -1))
-        self_energy = self_energy / q.size(-1) ** 0.5
-
-        offdiagonal = 1 - torch.eye(k.shape[1], device=k.device).unsqueeze(0)
-
-        # Calculate energy excluding self-interactions
-        energy = (offdiagonal * self_energy).mean(dim=-1, keepdim=True)
-
-        if mask is not None:
-            energy = energy.masked_fill(mask == 0, -1e9)
-
-        p_atten = torch.softmax(energy, dim=1)
-        return (p_atten * v).sum(dim=1), p_atten
+        return torch.tensor(negatives, dtype=text.dtype).to(text.device)
 
 
 class Model(torch.nn.Module):
@@ -64,13 +94,18 @@ class Model(torch.nn.Module):
         self.pad_idx = pad_idx
         self.unk_idx = unk_idx
 
-    def forward(self, inputs, hidden=None):
-        mask = self.mask(inputs).unsqueeze(-1)
-        embedded = self._emb(inputs) * mask
+    def forward(self, text, indices=None, hidden=None):
+        mask = self.mask(text).unsqueeze(-1)
+        embedded = self._emb(text) * mask
         sg, _ = self._att(embedded, embedded, embedded, mask)
 
         sl = embedded[:, -1, :]
         hidden = self._out(torch.cat([sg, sl], dim=-1))
+
+        if indices is not None:
+            matrix = self._emb(indices)
+            return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
+
         return hidden @ self._emb.weight.T
 
     def mask(self, x):
@@ -95,8 +130,11 @@ def build_model(X_val=None, k=20):
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
         max_epochs=5,
-        batch_size=512,
-        iterator_train=SequenceIterator,
+        batch_size=128,
+        iterator_train=NegativeSamplingIterator,
+        # iterator_train=SequenceIterator,
+        iterator_train__neg_samples=1000,
+        iterator_train__ns_exponent=0.,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
         iterator_train__sort_key=lambda x: len(x.text),
