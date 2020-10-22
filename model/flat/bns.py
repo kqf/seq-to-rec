@@ -64,14 +64,24 @@ class NegativeSamplingIterator(BucketIterator):
         # Normalize
         self.freq = np.array(freq) / np.sum(freq)
 
+    def sample(self, text):
+        negatives = np.random.choice(
+            np.arange(len(self.freq)),
+            # p=self.freq,
+            size=(text.shape[0], self.neg_samples),
+        )
+        return torch.tensor(negatives, dtype=text.dtype).to(text.device)
+
+
+class ExampleNegativeSamplingIterator(NegativeSamplingIterator):
     def __iter__(self):
         with warnings.catch_warnings(record=True):
             for batch in super().__iter__():
-                # samples = self.sample(batch.text)
-                # negatives = torch.cat([batch.gold.view(-1), samples])
+                samples = self.sample(batch.text)
+                negatives = torch.cat([batch.gold, samples], dim=-1)
                 inputs = {
                     "text": batch.text,
-                    "negatives": batch.gold,
+                    "negatives": negatives,
                 }
                 yield inputs, torch.arange(
                     batch.gold.shape[0], device=batch.gold.device)
@@ -80,9 +90,35 @@ class NegativeSamplingIterator(BucketIterator):
         negatives = np.random.choice(
             np.arange(len(self.freq)),
             # p=self.freq,
-            size=(self.neg_samples,),
+            size=(text.shape[0], self.neg_samples),
         )
         return torch.tensor(negatives, dtype=text.dtype).to(text.device)
+
+
+class BatchNegativeSamplingIterator(NegativeSamplingIterator):
+    def __iter__(self):
+        with warnings.catch_warnings(record=True):
+            for batch in super().__iter__():
+                inputs = {
+                    "text": batch.text,
+                    "negatives": batch.gold,
+                }
+                yield inputs, torch.arange(
+                    batch.gold.shape[0], device=batch.gold.device)
+
+
+class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
+    def __iter__(self):
+        with warnings.catch_warnings(record=True):
+            for batch in super().__iter__():
+                samples = self.sample(batch.text)
+                negatives = torch.cat([batch.gold, samples], dim=-1)
+                inputs = {
+                    "text": batch.text,
+                    "negatives": negatives,
+                }
+                yield inputs, batch.gold.shape[0] * torch.arange(
+                    batch.gold.shape[0], device=batch.gold.device)
 
 
 class Model(torch.nn.Module):
@@ -102,6 +138,10 @@ class Model(torch.nn.Module):
 
         sl = embedded[:, -1, :]
         hidden = self._out(torch.cat([sg, sl], dim=-1))
+
+        if negatives is not None:
+            negatives = negatives.view(-1)
+
         return hidden @ self._emb.weight[negatives].squeeze().T
 
     def mask(self, x):
@@ -127,7 +167,7 @@ def build_model(X_val=None, k=20):
         criterion=torch.nn.CrossEntropyLoss,
         max_epochs=5,
         batch_size=128,
-        iterator_train=NegativeSamplingIterator,
+        iterator_train=FlattenNegativeSamplingIterator,
         # iterator_train=SequenceIterator,
         iterator_train__neg_samples=1000,
         iterator_train__ns_exponent=0.,
