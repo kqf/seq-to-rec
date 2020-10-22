@@ -95,7 +95,7 @@ def build_model(X_val=None, k=20):
         optimizer__lr=0.002,
         criterion=torch.nn.CrossEntropyLoss,
         max_epochs=5,
-        batch_size=128,
+        batch_size=512,
         iterator_train=SequenceIterator,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
