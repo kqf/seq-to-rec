@@ -84,7 +84,7 @@ class ExampleNegativeSamplingIterator(NegativeSamplingIterator):
                     "negatives": negatives,
                 }
                 yield inputs, torch.arange(
-                    batch.gold.shape[0], device=batch.gold.device)
+                    samples.shape[1], device=batch.gold.device)
 
     def sample(self, text):
         negatives = np.random.choice(
@@ -117,7 +117,7 @@ class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
                     "text": batch.text,
                     "negatives": negatives,
                 }
-                yield inputs, batch.gold.shape[0] * torch.arange(
+                yield inputs, negatives.shape[-1] * torch.arange(
                     batch.gold.shape[0], device=batch.gold.device)
 
 
@@ -169,7 +169,7 @@ def build_model(X_val=None, k=20):
         batch_size=128,
         iterator_train=FlattenNegativeSamplingIterator,
         # iterator_train=SequenceIterator,
-        iterator_train__neg_samples=1000,
+        iterator_train__neg_samples=20,
         iterator_train__ns_exponent=0.,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
