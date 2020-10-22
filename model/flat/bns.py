@@ -64,7 +64,7 @@ class NegativeSamplingIterator(BucketIterator):
         # Normalize
         self.freq = np.array(freq) / np.sum(freq)
 
-    def sample(self, text):
+    def sample(self, text, gold=None):
         negatives = np.random.choice(
             np.arange(len(self.freq)),
             # p=self.freq,
@@ -111,7 +111,7 @@ class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
     def __iter__(self):
         with warnings.catch_warnings(record=True):
             for batch in super().__iter__():
-                samples = self.sample(batch.text)
+                samples = self.sample(batch.text, batch.gold)
                 negatives = torch.cat([batch.gold, samples], dim=-1)
                 inputs = {
                     "text": batch.text,
@@ -119,6 +119,17 @@ class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
                 }
                 yield inputs, negatives.shape[-1] * torch.arange(
                     batch.gold.shape[0], device=batch.gold.device)
+
+    def sample(self, text, gold=None):
+        freq = np.array(self.freq, copy=True)
+        freq[gold] = 0
+
+        negatives = np.random.choice(
+            np.arange(len(self.freq)),
+            p=self.freq,
+            size=(text.shape[0], self.neg_samples),
+        )
+        return torch.tensor(negatives, dtype=text.dtype).to(text.device)
 
 
 class Model(torch.nn.Module):
