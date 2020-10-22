@@ -169,7 +169,7 @@ def build_model(X_val=None, k=20):
         batch_size=128,
         iterator_train=FlattenNegativeSamplingIterator,
         # iterator_train=SequenceIterator,
-        iterator_train__neg_samples=20,
+        iterator_train__neg_samples=200,
         iterator_train__ns_exponent=0.,
         iterator_train__shuffle=True,
         iterator_train__sort=True,
