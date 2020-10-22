@@ -67,19 +67,20 @@ class NegativeSamplingIterator(BucketIterator):
     def __iter__(self):
         with warnings.catch_warnings(record=True):
             for batch in super().__iter__():
-                samples = self.sample(batch.text)
-                indices = torch.cat([batch.gold, samples], dim=-1)
+                # samples = self.sample(batch.text)
+                # negatives = torch.cat([batch.gold.view(-1), samples])
                 inputs = {
                     "text": batch.text,
-                    "indices": indices,
+                    "negatives": batch.gold,
                 }
-                yield inputs, batch.text.new_zeros(batch.text.shape[0])
+                yield inputs, torch.arange(
+                    batch.gold.shape[0], device=batch.gold.device)
 
     def sample(self, text):
         negatives = np.random.choice(
             np.arange(len(self.freq)),
             # p=self.freq,
-            size=(text.shape[0], self.neg_samples),
+            size=(self.neg_samples,),
         )
         return torch.tensor(negatives, dtype=text.dtype).to(text.device)
 
@@ -94,19 +95,14 @@ class Model(torch.nn.Module):
         self.pad_idx = pad_idx
         self.unk_idx = unk_idx
 
-    def forward(self, text, indices=None, hidden=None):
+    def forward(self, text, negatives=None, hidden=None):
         mask = self.mask(text).unsqueeze(-1)
         embedded = self._emb(text) * mask
         sg, _ = self._att(embedded, embedded, embedded, mask)
 
         sl = embedded[:, -1, :]
         hidden = self._out(torch.cat([sg, sl], dim=-1))
-
-        if indices is not None:
-            matrix = self._emb(indices)
-            return torch.sum(matrix * hidden.unsqueeze(1), dim=-1)
-
-        return hidden @ self._emb.weight.T
+        return hidden @ self._emb.weight[negatives].squeeze().T
 
     def mask(self, x):
         return (x != self.pad_idx) & (x != self.unk_idx)
