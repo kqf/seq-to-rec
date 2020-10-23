@@ -129,7 +129,14 @@ class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
             p=self.freq,
             size=(text.shape[0], self.neg_samples),
         )
-        return torch.tensor(negatives, dtype=text.dtype).to(text.device)
+
+        negatives = torch.randint(
+            (1, len(self.freq),)
+            (self.neg_samples,),
+            device=text.device
+        )
+        return negatives
+        # return torch.tensor(negatives, dtype=text.dtype).to(text.device)
 
 
 class Model(torch.nn.Module):
@@ -183,8 +190,8 @@ def build_model(X_val=None, k=20):
         iterator_train__neg_samples=200,
         iterator_train__ns_exponent=0.,
         iterator_train__shuffle=True,
-        iterator_train__sort=True,
-        iterator_train__sort_key=lambda x: len(x.text),
+        # iterator_train__sort=False,
+        # iterator_train__sort_key=lambda x: len(x.text),
         iterator_valid=SequenceIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
