@@ -64,7 +64,7 @@ class NegativeSamplingIterator(BucketIterator):
         # Normalize
         self.freq = np.array(freq) / np.sum(freq)
 
-    def sample(self, text):
+    def sample(self, text, gold=None):
         negatives = np.random.choice(
             np.arange(len(self.freq)),
             # p=self.freq,
@@ -111,7 +111,7 @@ class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
     def __iter__(self):
         with warnings.catch_warnings(record=True):
             for batch in super().__iter__():
-                samples = self.sample(batch.text)
+                samples = self.sample(batch.text, batch.gold)
                 negatives = torch.cat([batch.gold, samples], dim=-1)
                 inputs = {
                     "text": batch.text,
@@ -119,6 +119,18 @@ class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
                 }
                 yield inputs, negatives.shape[-1] * torch.arange(
                     batch.gold.shape[0], device=batch.gold.device)
+
+    def sample(self, text, gold=None):
+        freq = np.array(self.freq, copy=True)
+        freq[gold] = 0
+
+        negatives = np.random.choice(
+            np.arange(len(self.freq)),
+            p=self.freq,
+            size=(text.shape[0], self.neg_samples),
+        )
+
+        return negatives
 
 
 class Model(torch.nn.Module):
@@ -172,8 +184,8 @@ def build_model(X_val=None, k=20):
         iterator_train__neg_samples=200,
         iterator_train__ns_exponent=0.,
         iterator_train__shuffle=True,
-        iterator_train__sort=True,
-        iterator_train__sort_key=lambda x: len(x.text),
+        # iterator_train__sort=False,
+        # iterator_train__sort_key=lambda x: len(x.text),
         iterator_valid=SequenceIterator,
         iterator_valid__shuffle=False,
         iterator_valid__sort=False,
@@ -215,8 +227,8 @@ def build_model(X_val=None, k=20):
     return full
 
 
-@click.command()
-@click.option(
+@ click.command()
+@ click.option(
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
