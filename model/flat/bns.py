@@ -130,7 +130,7 @@ class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
             size=(text.shape[0], self.neg_samples),
         )
 
-        return negatives
+        return torch.tensor(negatives, device=gold.device)
 
 
 class Model(torch.nn.Module):
