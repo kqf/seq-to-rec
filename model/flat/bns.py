@@ -130,13 +130,7 @@ class FlattenNegativeSamplingIterator(NegativeSamplingIterator):
             size=(text.shape[0], self.neg_samples),
         )
 
-        negatives = torch.randint(
-            (1, len(self.freq),)
-            (self.neg_samples,),
-            device=text.device
-        )
         return negatives
-        # return torch.tensor(negatives, dtype=text.dtype).to(text.device)
 
 
 class Model(torch.nn.Module):
@@ -233,8 +227,8 @@ def build_model(X_val=None, k=20):
     return full
 
 
-@click.command()
-@click.option(
+@ click.command()
+@ click.option(
     "--path", type=click.Path(exists=True), default="data/processed/")
 def main(path):
     train, test, valid = read_data(path)
