@@ -73,7 +73,7 @@ class NegativeSamplingIterator(BucketIterator):
                     "text": batch.text,
                     "indices": indices,
                 }
-                yield inputs, inputs, torch.empty(0)
+                yield inputs, torch.empty(0)
 
     def sample(self, text):
         # negatives = np.random.choice(
