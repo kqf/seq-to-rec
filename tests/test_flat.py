@@ -8,7 +8,7 @@ from model.flat.mf import build_model as mf
 from model.flat.srgnn import build_model as srgnn
 from model.flat.quadratic import build_model as quadratic
 from model.flat.ns import build_model as ns
-# from model.flat.bpr import build_model as bpr
+from model.flat.bpr import build_model as bpr
 from model.flat.bns import build_model as bns
 
 
@@ -32,7 +32,7 @@ def test_data(flat_data, flat_oov, batch_size=32):
     srgnn,
     quadratic,
     ns,
-    # bpr,
+    bpr,
     bns,
 ])
 def test_model(build_model, flat_data):
